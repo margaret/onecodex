@@ -1,39 +1,32 @@
-"""
-``onecodex``
-------------
+from setuptools import setup, find_packages
 
-``onecodex`` provides a command line client for interaction with the
-One Codex API.
-
-
-
-Links
-`````
-* `One Codex: <https://www.onecodex.com/>`
-* `API Docs: <http://docs.onecodex.com/>`
-
-"""
-from setuptools import setup
-
+execfile('onecodex/version.py')
 
 setup(
     name='onecodex',
-    version='0.1.2',
-    url='https://www.onecodex.com/',
-    license='MIT',
-    author='Reference Genomics, Inc.',
-    author_email='help@onecodex.com',
-    description='One Codex Command Line Client',
-    long_description=__doc__,
-    packages=['onecodex'],
-    zip_safe=True,
-    platforms='any',
-    install_requires=[
-        'requests>=2.6.0',
-        'requests-toolbelt>=0.3.1'
-    ],
-    test_suite='nose.collector',
-    entry_points={
-        'console_scripts': ['onecodex = onecodex.cli:main']
+    version=__version__,  # noqa
+    packages=find_packages(exclude=['*test*']),
+    install_requires=['potion-client>=2.1.3', 'requests>=2.9', 'click', 'requests_toolbelt'],
+    include_package_data=True,
+    zip_safe=False,
+    extras_require={
+        'all': ['numpy', 'pandas', 'matplotlib', 'networkx']
     },
+    dependency_links=[],
+    setup_requires=[],
+    tests_require=[
+        'nose', 'flake8', 'tox', 'responses', 'httmock', 'numpy', 'pandas',
+        'requests_toolbelt', 'matplotlib', 'testfixtures', 'pyfakefs', 'coverage'
+    ],
+    author='Kyle McChesney & Nick Greenfield & Roderick Bovee',
+    author_email='kyle@onecodex.com',
+    description='',
+    license='Apache License Version 2.0',
+    keywords='One Codex API Client',
+    url='https://github.com/onecodex/onecodex',
+    classifiers=[],
+    entry_points={
+        'console_scripts': ['onecodex = onecodex.cli:onecodex']
+    },
+    test_suite='nose.collector'
 )
