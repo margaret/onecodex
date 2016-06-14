@@ -15,6 +15,7 @@ from threading import BoundedSemaphore, Thread
 
 import requests
 from potion_client import Client as PotionClient
+from potion_client.converter import PotionJSONSchemaDecoder
 from potion_client.utils import upper_camel_case
 from requests.auth import HTTPBasicAuth
 from requests_toolbelt import MultipartEncoder, MultipartEncoderMonitor
@@ -374,7 +375,11 @@ class ExtendedPotionClient(PotionClient):
     SCHEMA_SAVE_DURATION = 1  # day
 
     def _get_schema(self):
-        return requests.get("{}?expand=all".format(self._schema_url)).json()
+        return self.session \
+                   .get(self._schema_url) \
+                   .json(cls=PotionJSONSchemaDecoder,
+                         referrer=self._schema_url,
+                         client=self)
 
     def _fetch_schema(self, extensions=[], cache_schema=False, creds_file=None):
         log.debug("Fetching API JSON schema.")
@@ -396,8 +401,14 @@ class ExtendedPotionClient(PotionClient):
 
             if schema is None:  # Get and update the schema if it doesn't exist
                 schema = self._get_schema()
-                creds['schema'] = schema
-                json.dump(creds, open(creds_fp, mode='w'))
+
+                # TODO: Implement schema caching with custom PotionEncoder/Decoders
+                #       Otherwise, the references don't properly get (de-)serialized
+                #
+                # creds['saved_at'] = datetime.datetime.strftime(datetime.datetime.now(),
+                #                                                self.DATE_FORMAT)
+                # creds['schema'] = schema
+                # json.dump(creds, open(creds_fp, mode='w'))
 
         elif cache_schema and not os.path.exists(creds_fp):
             # TODO: Consider saving schema for API key only use in .onecodex file
