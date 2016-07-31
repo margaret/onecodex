@@ -1,6 +1,9 @@
 from setuptools import setup, find_packages
 
-execfile('onecodex/version.py')
+
+with open('onecodex/version.py') as import_file:
+    exec(import_file.read())
+
 
 setup(
     name='onecodex',
