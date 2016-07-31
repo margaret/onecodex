@@ -6,7 +6,10 @@ import json
 import logging
 import os
 import sys
-import urlparse
+try:
+    from urlparse import urlparse
+except ImportError:
+    from urllib.parse import urlparse
 
 
 import requests
@@ -134,7 +137,7 @@ def download_file_helper(url, input_path):
     r = requests.get(url, stream=True)
     if r.status_code != 200:
         cli_log.error("Failed to download file: %s" % r.json()["message"])
-    original_filename = urlparse.urlparse(r.url).path.split("/")[-1]
+    original_filename = urlparse(r.url).path.split("/")[-1]
     if os.path.isdir(input_path):
         local_full_path = os.path.join(input_path, original_filename)
     else:
