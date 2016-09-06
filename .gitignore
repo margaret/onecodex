@@ -3,6 +3,7 @@ var/*
 *.pyc
 3env/
 .tox/
+.cache/
 .eggs/
 onecodex.egg-info/
 build/

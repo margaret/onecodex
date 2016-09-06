@@ -1,0 +1,99 @@
+from __future__ import print_function
+
+import json
+import re
+import unittest
+
+import requests
+import responses
+
+
+def intercept(func, log=False, dump=None):
+    """
+    Used to copy API requests to make sure test data doesn't depend upon a connection to the One
+    Codex server (basically like `betamax`, but for our requests/responses setup).
+
+    For example, to dump out a log of everything that the function `test_function` requests, do the
+    following:
+
+    >>>mock_responses = {}
+    >>>intercept(test_function, dump=mock_responses)
+    >>>mock_json = json.dumps(mock_responses, separators=(',', ':'))
+
+    Then you can test the function in the future by copying the output of mock_json into
+    a string literal and doing:
+
+    >>>mock_request(test_function, mock_json)
+    """
+    def handle_request(request):
+        if log:
+            print('->', request.method, request.url)
+
+        # patch the request through (and disable mocking for this chunk)
+        responses.mock.stop()
+        resp = requests.get(request.url, headers=request.headers)
+        text = resp.text
+        headers = resp.headers
+        # for some reason, responses pitches a fit about this being in the cookie
+        headers['Set-Cookie'] = headers.get('Set-Cookie', '').replace(' HttpOnly;', '')
+        responses.mock.start()
+        data = json.dumps(json.loads(text), separators=(',', ':'))
+        if log:
+            print('<-', resp.status_code, data)
+        if dump is not None:
+            dump[request.method + ':' + request.url.split('/', 3)[-1]] = data
+        return (200, headers, text)
+
+    regex = re.compile('.*')
+    with responses.mock as rsps:
+        rsps.add_callback(responses.GET, regex, callback=handle_request)
+        func()
+
+
+def mock_request(func, mock_json):
+    with responses.mock as rsps:
+        for mock_url, mock_data in mock_json.items():
+            method, url = mock_url.split(':')
+            rsps.add(method, re.compile('http://[^/]+/' + url), body=mock_data,
+                     content_type='application/json')
+        func()
+        assert len(responses.calls) > 0
+
+
+def mock_request_decorator(mock_json):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            print(args, kwargs)
+            with responses.mock as rsps:
+                for mock_url, mock_data in mock_json.items():
+                    method, url = mock_url.split(':')
+                    rsps.add(method, re.compile('http://[^/]+/' + url), body=mock_data,
+                             content_type='application/json')
+                func(*args, **kwargs)
+                assert len(responses.calls) > 0
+        return wrapper
+    return decorator
+
+
+mock_json = {"GET:api/v1/tags/fb8e3b693c874f9e":"{\"color\":\"#D4E9ED\",\"name\":\"isolate\",\"$uri\":\"/api/v1/tags/fb8e3b693c874f9e\"}","GET:api/v1/analyses/464a7ebcf9f84050":"{\"complete\":true,\"$uri\":\"/api/v1/analyses/464a7ebcf9f84050\",\"created_at\":\"2016-04-26T13:25:38.016211-07:00\",\"success\":true,\"sample\":{\"$ref\":\"/api/v1/samples/7428cca4a3a04a8e\"},\"job\":{\"$ref\":\"/api/v1/jobs/c3caae64b63b4f07\"},\"analysis_type\":\"classification\",\"error_msg\":\"\"}","GET:api/v1/samples/7428cca4a3a04a8e":"{\"$uri\":\"/api/v1/samples/7428cca4a3a04a8e\",\"primary_analysis\":{\"$ref\":\"/api/v1/analyses/464a7ebcf9f84050\"},\"created_at\":\"2015-09-25T17:27:19.596555-07:00\",\"tags\":[{\"$ref\":\"/api/v1/tags/42997b7a62634985\"},{\"$ref\":\"/api/v1/tags/fb8e3b693c874f9e\"},{\"$ref\":\"/api/v1/tags/ff4e81909a4348d9\"}],\"filename\":\"SRR2352185.fastq.gz\",\"project\":null,\"owner\":{\"$ref\":\"/api/v1/users/4ada56103d9a48b8\"},\"indexed\":false,\"starred\":false,\"size\":181687821,\"public\":false,\"metadata\":{\"$ref\":\"/api/v1/metadata/a7fc7e430e704e2e\"}}","GET:api/v1/tags/ff4e81909a4348d9":"{\"color\":\"#D4E9ED\",\"name\":\"S. enterica\",\"$uri\":\"/api/v1/tags/ff4e81909a4348d9\"}","GET:api/v1/tags/42997b7a62634985":"{\"color\":\"#8DCEA8\",\"name\":\"environmental\",\"$uri\":\"/api/v1/tags/42997b7a62634985\"}"}  # noqa
+
+
+class TestAPI(unittest.TestCase):
+    @mock_request_decorator(mock_json)
+    def test_api(self):
+        from onecodex import Api
+        ocx = Api(api_key='1eab4217d30d42849dbde0cd1bb94e39',
+                  base_url='http://localhost:3000', cache_schema=True)
+        sample = ocx.Samples.get('7428cca4a3a04a8e')
+        assert sample.size == 181687821
+        assert sample.filename == 'SRR2352185.fastq.gz'
+
+        analysis = sample.primary_analysis
+        assert analysis
+        assert analysis.complete
+
+        tags = sample.tags
+        assert len(tags) > 1
+        assert 'isolate' in [t.name for t in tags]
+        # s.delete()
+        return ocx
