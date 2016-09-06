@@ -1,54 +1,45 @@
-"""
-extensions.py
-author: @mbiokyle29
-"""
-from __future__ import print_function
-import logging
 import datetime
 from collections import defaultdict, OrderedDict
 
-import pandas as pd
-from potion_client.resource import Resource
-
-log = logging.getLogger(__name__)
+from onecodex.models import OneCodexBase
 
 
-class SamplesExtensions(Resource):
-    _extends = ["Samples"]
+class Analyses(OneCodexBase):
+    _resource_path = '/api/v1/analyses'
 
 
-class AnalysesExtensions(Resource):
-    _extends = ["Analyses"]
+class Alignments(Analyses):
+    _resource_path = '/api/v1/alignments'
 
 
-class ClassificationsExtensions(Resource):
-    _extends = ["Classifications"]
+class Classifications(Analyses):
+    _resource_path = '/api/v1/classifications'
 
-    otu_format = "Biological Observation Matrix 0.9.1-dev"
-    otu_url = "http://biom-format.org/documentation/format_versions/biom-1.0.html"  # noqa
     _table = None
 
-    @classmethod
+    @staticmethod
     def to_otu(cls, classifications):
         """
         Converts a list of classifications into a dictionary resembling
             an OTU table.
         """
+        otu_format = 'Biological Observation Matrix 0.9.1-dev'
+        otu_url = 'http://biom-format.org/documentation/format_versions/biom-1.0.html'  # noqa
 
-        otu = OrderedDict({'format': cls.otu_format,
-                           'format_url': cls.otu_url,
-                           'type': "OTU table",
-                           'generated_by': "One Codex API V1",
+        otu = OrderedDict({'format': otu_format,
+                           'format_url': otu_url,
+                           'type': 'OTU table',
+                           'generated_by': 'One Codex API V1',
                            'date': datetime.datetime.now().isoformat(),
                            'rows': [],
                            'columns': [],
-                           'matrix_type': "sparse",
-                           'matrix_element_type': "int"})
+                           'matrix_type': 'sparse',
+                           'matrix_element_type': 'int'})
 
         rows = defaultdict(dict)
         for classification in classifications:
             col_id = len(otu['columns'])  # 0 index
-            columns_entry = {"id": str(classification.id)}
+            columns_entry = {'id': str(classification.id)}
             otu['columns'].append(columns_entry)
             sample_df = classification.table_df()
 
@@ -65,7 +56,7 @@ class ClassificationsExtensions(Resource):
         for present_taxa in sorted(rows):
             # add the row entry
             row_id = len(otu['rows'])
-            otu['rows'].append({"id": present_taxa})
+            otu['rows'].append({'id': present_taxa})
 
             for sample_with_hit in rows[present_taxa]:
                 counts = rows[present_taxa][sample_with_hit]
@@ -79,8 +70,10 @@ class ClassificationsExtensions(Resource):
         Note that self._table starts as undefined
         and only will be set once as needed
         """
+        import pandas as pd
+
         while self._table is None:
-            self._table = pd.DataFrame(self.table()['table'])
+            self._table = pd.DataFrame(self._resource.table()['table'])
         return self._table
 
     def abundances_df(self, ids=None):
@@ -97,22 +90,5 @@ class ClassificationsExtensions(Resource):
             return res[res['tax_id'].isin(ids)]
 
 
-class MarkerpanelsExtensions(Resource):
-    _extends = ["Markerpanels"]
-
-
-class MetadataExtensions(Resource):
-    _extends = ["Metadata"]
-
-
-class TagsExtensions(Resource):
-    _extends = ["Tags"]
-
-
-class UsersExtensions(Resource):
-    _extends = ["Users"]
-
-
-extensions = [SamplesExtensions, AnalysesExtensions,
-              ClassificationsExtensions, MarkerpanelsExtensions,
-              MetadataExtensions, TagsExtensions, UsersExtensions]
+class MarkerPanels(Analyses):
+    _resource_path = '/api/v1/markerpanels'

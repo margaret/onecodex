@@ -9,8 +9,8 @@ setup(
     name='onecodex',
     version=__version__,  # noqa
     packages=find_packages(exclude=['*test*']),
-    install_requires=['potion-client>=2.4.1', 'requests>=2.9',
-                      'click>=6.6', 'requests_toolbelt>=0.6.2'],
+    install_requires=['potion-client>=2.4.1', 'requests>=2.9', 'click>=6.6',
+                      'requests_toolbelt>=0.6.2', 'python-dateutil>=2.5.3'],
     include_package_data=True,
     zip_safe=False,
     extras_require={

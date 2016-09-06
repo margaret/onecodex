@@ -2,10 +2,11 @@
 Functions for connecting to the One Codex server; these should be rolled out
 into the onecodex python library at some point for use across CLI and GUI clients
 """
-import os
-from math import floor
+from __future__ import print_function
 
-import requests
+from math import floor
+import os
+
 import boto3
 from boto3.s3.transfer import S3Transfer
 from boto3.exceptions import S3UploadFailedError
@@ -18,7 +19,7 @@ class UploadException(Exception):
     pass
 
 
-def upload_file(filename, apikey, server_url, progress_callback=None, n_callbacks=400):
+def upload_file(filename, session, server_url, progress_callback=None, n_callbacks=400):
     """
     Uploads a file to the One Codex server (and handles files >5Gb)
 
@@ -26,11 +27,12 @@ def upload_file(filename, apikey, server_url, progress_callback=None, n_callback
     upload progresses.
     """
     # first check with the one codex server to get upload parameters
-    req = requests.get(server_url + 'api/v0/init_multipart_upload', auth=(apikey, ''))
+    req = session.get(server_url + 'api/v1/samples/init_multipart_upload')
     if req.status_code != 200:
         raise UploadException('Could not initiate upload with One Codex server')
 
     upload_params = req.json()
+    callback_url = server_url.rstrip('/') + upload_params['callback_url']
 
     access_key = upload_params['upload_aws_access_key_id']
     secret_key = upload_params['upload_aws_secret_access_key']
@@ -59,6 +61,7 @@ def upload_file(filename, apikey, server_url, progress_callback=None, n_callback
 
     # actually do the upload
     client = boto3.client('s3', aws_access_key_id=access_key, aws_secret_access_key=secret_key)
+    # TODO: this automatically uses 10 threads, but we'd probably like it to be configurable
     transfer = S3Transfer(client)
     try:
         transfer.upload_file(filename, upload_params['s3_bucket'], upload_params['file_id'],
@@ -70,9 +73,8 @@ def upload_file(filename, apikey, server_url, progress_callback=None, n_callback
 
     # return completed status to the one codex server
     s3_path = 's3://{}/{}'.format(upload_params['s3_bucket'], upload_params['file_id'])
-    callback_url = server_url.rstrip('/') + upload_params['callback_url']
-    req = requests.post(callback_url, auth=(apikey, ''),
-                        json={'s3_path': s3_path, 'filename': os.path.basename(filename)})
+    req = session.post(callback_url,
+                       json={'s3_path': s3_path, 'filename': os.path.basename(filename)})
 
     if req.status_code != 200:
         raise UploadException('Upload confirmation has failed. Please contact help@onecodex.com '

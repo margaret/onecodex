@@ -2,8 +2,17 @@
 Functions for connecting to the One Codex server; these should be used across CLI and GUI clients
 """
 import re
-
 import requests
+
+
+class BearerTokenAuth(requests.auth.AuthBase):
+    """Attaches Bearer Auth headers to a given Request object."""
+    def __init__(self, token):
+        self.token = token
+
+    def __call__(self, request):
+        request.headers['Authorization'] = "Bearer {}".format(self.token)
+        return request
 
 
 def fetch_api_key_from_uname(username, password, server_url):
