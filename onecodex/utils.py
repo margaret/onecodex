@@ -69,9 +69,9 @@ def cli_resource_fetcher(ctx, resource, uris):
 
         # if non given fetch all
         cli_log.info("No %s IDs given, fetching all...", resource_name)
-        instances = getattr(ctx.obj['API'], resource_name).instances()
+        instances = getattr(ctx.obj['API'], resource_name).all()
         cli_log.info("Fetched %i %ss", len(instances), resource)
-        pprint([x._properties for x in instances], ctx.obj['NOPPRINT'])
+        pprint([x._resource._properties for x in instances], ctx.obj['NOPPRINT'])
 
     else:
         uris = list(set(uris))
@@ -81,7 +81,7 @@ def cli_resource_fetcher(ctx, resource, uris):
         for uri in uris:
             try:
                 instance = getattr(ctx.obj['API'], resource_name).get(uri)
-                instances.append(instance._properties)
+                instances.append(instance._resource._properties)
             except requests.exceptions.HTTPError as e:
                 cli_log.error("Could not find %s %s (%d status code)",
                               resource_name, uri, e.response.status_code)

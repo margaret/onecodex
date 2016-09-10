@@ -20,7 +20,7 @@ CHUNK_SIZE = 8192
 log = logging.getLogger(__name__)
 
 
-def old_upload(files, session, samples_resource, server_url, threads=DEFAULT_UPLOAD_THREADS):
+def old_upload(files, session, samples_resource, server_url, threads=None):
     """
     This is the entry point for the upload flow. It will determine
         what approach to take with uploading and pass to other functions
@@ -28,6 +28,8 @@ def old_upload(files, session, samples_resource, server_url, threads=DEFAULT_UPL
     -param list files: The list of file (paths) to upload
     -param int threads: Number of upload threads to use (def=4)
     """
+    if threads is None:
+        threads = DEFAULT_UPLOAD_THREADS
 
     # check insecure platform, disable warnigns
     if warn_if_insecure_platform():
@@ -92,7 +94,7 @@ def _upload_multipart(filename, session, samples_resource, server_url):
               "    ###########################################################\n")
         while p.poll() is None:
             char = p.stdout.read(1)
-            sys.stdout.write(char)
+            sys.stdout.write(str(char))
             sys.stdout.flush()
 
     except KeyboardInterrupt:

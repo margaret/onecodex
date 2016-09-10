@@ -162,9 +162,9 @@ def samples(ctx, samples):
 def upload(ctx, files, no_threads, max_threads):
     """Upload a FASTA or FASTQ (optionally gzip'd) to One Codex"""
     if not no_threads:
-        ctx.obj['API'].upload(files, threads=max_threads)
+        ctx.obj['API'].Samples.upload(files, threads=max_threads)
     else:
-        ctx.obj['API'].upload(files, threads=1)
+        ctx.obj['API'].Samples.upload(files, threads=1)
 
 
 @onecodex.command('login')

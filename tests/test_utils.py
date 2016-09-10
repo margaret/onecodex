@@ -2,10 +2,10 @@
 test_api.py
 author: @mbiokyle29
 """
-import unittest
-from functools import partial
-
 from click import BadParameter
+from functools import partial
+import pytest
+
 
 from onecodex.utils import (
     check_for_allowed_file,
@@ -13,31 +13,28 @@ from onecodex.utils import (
 )
 
 
-class TestUtils(unittest.TestCase):
+def test_check_allowed_file():
+    # bad ones
+    with pytest.raises(SystemExit):
+        check_for_allowed_file("file.bam")
+        check_for_allowed_file("file")
 
-    def test_check_allowed_file(self):
+    # good ones
+    check_for_allowed_file("file.fastq")
+    check_for_allowed_file("file.fastq.gz")
 
-        # bad ones
-        with self.assertRaises(SystemExit):
-            check_for_allowed_file("file.bam")
-            check_for_allowed_file("file")
 
-        # good ones
-        check_for_allowed_file("file.fastq")
-        check_for_allowed_file("file.fastq.gz")
+def test_is_valid_api_key():
+    empty_key = ""
+    short_key = "123"
+    long_key = "123abc123abc123abc123abc123abc123abc123abc123abc123abc"
+    good_key = "123abc123abc123abc123abc123abc32"
 
-    def test_is_valid_api_key(self):
+    # its a click callback so it expects some other params
+    valid_api_key_partial = partial(valid_api_key, None, None)
 
-        empty_api = ""
-        short_api = "123"
-        long_api = "123abc123abc123abc123abc123abc123abc123abc123abc123abc"
-        good_api = "123abc123abc123abc123abc123abc32"
+    for key in [empty_key, short_key, long_key]:
+        with pytest.raises(BadParameter):
+            valid_api_key_partial(key)
 
-        # its a click callback so it expects some other params
-        valid_api_key_p = partial(valid_api_key, None, None)
-
-        for faulty_api in [empty_api, short_api, long_api]:
-            with self.assertRaises(BadParameter):
-                valid_api_key_p(faulty_api)
-
-        self.assertEqual(good_api, valid_api_key_p(good_api))
+    assert good_key == valid_api_key_partial(good_key)

@@ -9,18 +9,20 @@ setup(
     name='onecodex',
     version=__version__,  # noqa
     packages=find_packages(exclude=['*test*']),
-    install_requires=['potion-client>=2.4.1', 'requests>=2.9', 'click>=6.6',
-                      'requests_toolbelt>=0.6.2', 'python-dateutil>=2.5.3'],
+    install_requires=['potion-client==2.4.1', 'requests>=2.9', 'click>=6.6',
+                      'requests_toolbelt==0.7.0', 'python-dateutil>=2.5.3',
+                      'six>=1.10.0'],
     include_package_data=True,
     zip_safe=False,
     extras_require={
         'all': ['numpy>=1.11.0', 'pandas>=0.18.1', 'matplotlib>1.5.1', 'networkx>=1.11']
     },
     dependency_links=[],
-    setup_requires=[],
+    setup_requires=['pytest-runner'],
     tests_require=[
-        'nose', 'flake8', 'tox', 'responses', 'httmock', 'numpy', 'pandas',
-        'requests_toolbelt', 'matplotlib', 'testfixtures', 'pyfakefs', 'coverage'
+        'flake8', 'tox', 'responses', 'httmock', 'numpy', 'pandas',
+        'requests_toolbelt', 'matplotlib', 'testfixtures', 'pyfakefs', 'coverage',
+        'pytest>=3.0.2', 'mock>=2.0.0'
     ],
     author='Kyle McChesney & Nick Greenfield & Roderick Bovee',
     author_email='opensource@onecodex.com',
@@ -32,5 +34,5 @@ setup(
     entry_points={
         'console_scripts': ['onecodex = onecodex.cli:onecodex']
     },
-    test_suite='nose.collector'
+    test_suite='tests'
 )

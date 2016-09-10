@@ -1,5 +1,6 @@
 import requests
 from requests.exceptions import HTTPError
+from six import string_types
 
 from onecodex.exceptions import OneCodexException
 from onecodex.models import OneCodexBase
@@ -88,7 +89,7 @@ class Samples(OneCodexBase):
             self.metadata.save()
 
     @classmethod
-    def upload(cls, filename):
+    def upload(cls, filename, threads=None):
         # try:
         #     multipart_req = cls._resource.read_init_multipart_upload()
         # except HTTPError as exc:
@@ -99,7 +100,10 @@ class Samples(OneCodexBase):
         # upload_file(filename, cls._resource._client.session, None, 100)
 
         res = cls._resource
-        old_upload([filename], res._client.session, res, res._client._root_url + '/')
+        if isinstance(filename, string_types):
+            filename = [filename]
+        old_upload(filename, res._client.session, res, res._client._root_url + '/',
+                   threads=threads)
 
         # FIXME: pass the auth into this so we can authenticate the callback?
         # FIXME: return a Sample object?

@@ -18,7 +18,7 @@ class Classifications(Analyses):
     _table = None
 
     @staticmethod
-    def to_otu(cls, classifications):
+    def to_otu(classifications):
         """
         Converts a list of classifications into a dictionary resembling
             an OTU table.
@@ -41,7 +41,7 @@ class Classifications(Analyses):
             col_id = len(otu['columns'])  # 0 index
             columns_entry = {'id': str(classification.id)}
             otu['columns'].append(columns_entry)
-            sample_df = classification.table_df()
+            sample_df = classification.table()
 
             for tax_id in sample_df['tax_id']:
                 rows[tax_id][col_id] = int(
@@ -64,15 +64,14 @@ class Classifications(Analyses):
 
         return otu
 
-    def table_df(self):
+    def table(self):
         """
         Return the complete results table for the classification.
         Note that self._table starts as undefined
         and only will be set once as needed
         """
         import pandas as pd
-
-        while self._table is None:
+        if self._table is None:
             self._table = pd.DataFrame(self._resource.table()['table'])
         return self._table
 
@@ -83,10 +82,10 @@ class Classifications(Analyses):
 
         if ids is None:
             # get the data frame
-            return self.table_df()
+            return self.table()
 
         else:
-            res = self.table_df()
+            res = self.table()
             return res[res['tax_id'].isin(ids)]
 
 

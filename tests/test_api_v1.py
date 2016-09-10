@@ -2,6 +2,7 @@ from __future__ import print_function
 
 import json
 import re
+from pkg_resources import resource_string
 import unittest
 
 import requests
@@ -75,10 +76,18 @@ def mock_request_decorator(mock_json):
     return decorator
 
 
-mock_json = {"GET:api/v1/tags/fb8e3b693c874f9e":"{\"color\":\"#D4E9ED\",\"name\":\"isolate\",\"$uri\":\"/api/v1/tags/fb8e3b693c874f9e\"}","GET:api/v1/analyses/464a7ebcf9f84050":"{\"complete\":true,\"$uri\":\"/api/v1/analyses/464a7ebcf9f84050\",\"created_at\":\"2016-04-26T13:25:38.016211-07:00\",\"success\":true,\"sample\":{\"$ref\":\"/api/v1/samples/7428cca4a3a04a8e\"},\"job\":{\"$ref\":\"/api/v1/jobs/c3caae64b63b4f07\"},\"analysis_type\":\"classification\",\"error_msg\":\"\"}","GET:api/v1/samples/7428cca4a3a04a8e":"{\"$uri\":\"/api/v1/samples/7428cca4a3a04a8e\",\"primary_analysis\":{\"$ref\":\"/api/v1/analyses/464a7ebcf9f84050\"},\"created_at\":\"2015-09-25T17:27:19.596555-07:00\",\"tags\":[{\"$ref\":\"/api/v1/tags/42997b7a62634985\"},{\"$ref\":\"/api/v1/tags/fb8e3b693c874f9e\"},{\"$ref\":\"/api/v1/tags/ff4e81909a4348d9\"}],\"filename\":\"SRR2352185.fastq.gz\",\"project\":null,\"owner\":{\"$ref\":\"/api/v1/users/4ada56103d9a48b8\"},\"indexed\":false,\"starred\":false,\"size\":181687821,\"public\":false,\"metadata\":{\"$ref\":\"/api/v1/metadata/a7fc7e430e704e2e\"}}","GET:api/v1/tags/ff4e81909a4348d9":"{\"color\":\"#D4E9ED\",\"name\":\"S. enterica\",\"$uri\":\"/api/v1/tags/ff4e81909a4348d9\"}","GET:api/v1/tags/42997b7a62634985":"{\"color\":\"#8DCEA8\",\"name\":\"environmental\",\"$uri\":\"/api/v1/tags/42997b7a62634985\"}"}  # noqa
+mock_json = {
+    "GET:api/v1/schema": resource_string(__name__, 'data/schema.json').decode('utf-8'),  # noqa
+    "GET:api/v1/tags/fb8e3b693c874f9e": "{\"color\":\"#D4E9ED\",\"name\":\"isolate\",\"$uri\":\"/api/v1/tags/fb8e3b693c874f9e\"}",  # noqa
+    "GET:api/v1/analyses/464a7ebcf9f84050": "{\"complete\":true,\"$uri\":\"/api/v1/analyses/464a7ebcf9f84050\",\"created_at\":\"2016-04-26T13:25:38.016211-07:00\",\"success\":true,\"sample\":{\"$ref\":\"/api/v1/samples/7428cca4a3a04a8e\"},\"job\":{\"$ref\":\"/api/v1/jobs/c3caae64b63b4f07\"},\"analysis_type\":\"classification\",\"error_msg\":\"\"}",  # noqa
+    "GET:api/v1/samples/7428cca4a3a04a8e": "{\"$uri\":\"/api/v1/samples/7428cca4a3a04a8e\",\"primary_analysis\":{\"$ref\":\"/api/v1/analyses/464a7ebcf9f84050\"},\"created_at\":\"2015-09-25T17:27:19.596555-07:00\",\"tags\":[{\"$ref\":\"/api/v1/tags/42997b7a62634985\"},{\"$ref\":\"/api/v1/tags/fb8e3b693c874f9e\"},{\"$ref\":\"/api/v1/tags/ff4e81909a4348d9\"}],\"filename\":\"SRR2352185.fastq.gz\",\"project\":null,\"owner\":{\"$ref\":\"/api/v1/users/4ada56103d9a48b8\"},\"indexed\":false,\"starred\":false,\"size\":181687821,\"public\":false,\"metadata\":{\"$ref\":\"/api/v1/metadata/a7fc7e430e704e2e\"}}",  # noqa
+    "GET:api/v1/tags/ff4e81909a4348d9": "{\"color\":\"#D4E9ED\",\"name\":\"S. enterica\",\"$uri\":\"/api/v1/tags/ff4e81909a4348d9\"}",  # noqa
+    "GET:api/v1/tags/42997b7a62634985": "{\"color\":\"#8DCEA8\",\"name\":\"environmental\",\"$uri\":\"/api/v1/tags/42997b7a62634985\"}"  # noqa
+}
 
 
 class TestAPI(unittest.TestCase):
+
     @mock_request_decorator(mock_json)
     def test_api(self):
         from onecodex import Api

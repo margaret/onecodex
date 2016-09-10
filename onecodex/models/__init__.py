@@ -23,6 +23,8 @@ class OneCodexBase(object):
         # FIXME: get a resource from somewhere instead of setting to None (lots of stuff assumes
         # non-None) if we have a class.resource?
         if _resource is not None:
+            if not isinstance(_resource, Resource):
+                raise TypeError('Use the .get() method to fetch an individual resource.')
             self._resource = _resource
         elif hasattr(self.__class__, '_resource'):
             self._resource = self.__class__._resource()
@@ -71,7 +73,7 @@ class OneCodexBase(object):
         ))
 
     def __setattr__(self, key, value):
-        if key == '_resource':
+        if key.startswith("_"):  # Allow directly setting _attributes, incl. _resource
             # these are any fields that have to be settable normally
             super(OneCodexBase, self).__setattr__(key, value)
             return
@@ -111,6 +113,10 @@ class OneCodexBase(object):
         if hasattr(self, '_resource') and key in self._resource.keys():
             # changes on this model also change the potion resource
             del self._resource[key]
+
+    def __eq__(self, other):
+        # TODO: We should potentially check that both resources are up-to-date
+        return self._resource._uri == other._resource._uri
 
     @classmethod
     def _has_schema_method(cls, method_name):

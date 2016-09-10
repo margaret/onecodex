@@ -37,14 +37,14 @@ class TestCli(unittest.TestCase):
         self.analysis_link = "{}analyses/{}".format(self.base_url,
                                                     self.analysis_uri)
         self.analysis = resource_string(__name__,
-                                        'data/cli/analysis.json')
+                                        'data/cli/analysis.json').decode('utf-8')
 
         # samples
         self.sample_uri = "d5a69fe85b7a4208"
         self.sample_link = "{}samples/{}".format(self.base_url,
                                                  self.sample_uri)
         self.sample = resource_string(__name__,
-                                      'data/cli/sample.json')
+                                      'data/cli/sample.json').decode('utf-8')
 
         # classifications
         self.classification_uri = "4a668ac6daf74364"
@@ -52,7 +52,7 @@ class TestCli(unittest.TestCase):
             self.base_url, self.classification_uri)
 
         self.classification = resource_string(__name__,
-                                              'data/cli/classification.json')
+                                              'data/cli/classification.json').decode('utf-8')
         # TODO: add markerpanels?
 
         # expected messages
@@ -91,7 +91,7 @@ class TestCli(unittest.TestCase):
     def test_analyses_help(self):
 
         self.schema_url = "http://localhost:5000/api/v1/schema"
-        self.schema_file = resource_string(__name__, 'data/schema.json')
+        self.schema_file = resource_string(__name__, 'data/schema.json').decode('utf-8')
         responses.add(responses.GET, self.schema_url,
                       json=json.loads(self.schema_file))
         responses.add(responses.GET, self.analysis_link,
@@ -107,7 +107,7 @@ class TestCli(unittest.TestCase):
     @responses.activate
     def test_analysis(self):
         self.schema_url = "http://localhost:5000/api/v1/schema"
-        self.schema_file = resource_string(__name__, 'data/schema.json')
+        self.schema_file = resource_string(__name__, 'data/schema.json').decode('utf-8')
         responses.add(responses.GET, self.schema_url,
                       json=json.loads(self.schema_file))
         responses.add(responses.GET, self.analysis_link,
@@ -128,7 +128,7 @@ class TestCli(unittest.TestCase):
     @responses.activate
     def test_sample(self):
         self.schema_url = "http://localhost:5000/api/v1/schema"
-        self.schema_file = resource_string(__name__, 'data/schema.json')
+        self.schema_file = resource_string(__name__, 'data/schema.json').decode('utf-8')
         responses.add(responses.GET, self.schema_url,
                       json=json.loads(self.schema_file))
         responses.add(responses.GET, self.sample_link,
@@ -147,7 +147,7 @@ class TestCli(unittest.TestCase):
     @responses.activate
     def test_classification(self):
         self.schema_url = "http://localhost:5000/api/v1/schema"
-        self.schema_file = resource_string(__name__, 'data/schema.json')
+        self.schema_file = resource_string(__name__, 'data/schema.json').decode('utf-8')
         responses.add(responses.GET, self.schema_url,
                       json=json.loads(self.schema_file))
         responses.add(responses.GET, self.classification_link,
@@ -302,7 +302,7 @@ class TestCliUpload(unittest.TestCase):
     def test_upload_one_file_no_threads(self):
 
         self.schema_url = "http://localhost:5000/api/v1/schema"
-        self.schema_file = resource_string(__name__, 'data/schema.json')
+        self.schema_file = resource_string(__name__, 'data/schema.json').decode('utf-8')
         responses.add(responses.GET, self.schema_url,
                       json=json.loads(self.schema_file))
 
@@ -334,7 +334,7 @@ class TestCliUpload(unittest.TestCase):
     @responses.activate
     def test_upload_one_file_threads(self):
         self.schema_url = "http://localhost:5000/api/v1/schema"
-        self.schema_file = resource_string(__name__, 'data/schema.json')
+        self.schema_file = resource_string(__name__, 'data/schema.json').decode('utf-8')
         responses.add(responses.GET, self.schema_url,
                       json=json.loads(self.schema_file))
 
@@ -366,7 +366,7 @@ class TestCliUpload(unittest.TestCase):
     @responses.activate
     def test_upload_multiple_files_serial(self):
         self.schema_url = "http://localhost:5000/api/v1/schema"
-        self.schema_file = resource_string(__name__, 'data/schema.json')
+        self.schema_file = resource_string(__name__, 'data/schema.json').decode('utf-8')
         responses.add(responses.GET, self.schema_url,
                       json=json.loads(self.schema_file))
 
@@ -405,7 +405,7 @@ class TestCliUpload(unittest.TestCase):
     @responses.activate
     def test_upload_multiple_files_threads(self):
         self.schema_url = "http://localhost:5000/api/v1/schema"
-        self.schema_file = resource_string(__name__, 'data/schema.json')
+        self.schema_file = resource_string(__name__, 'data/schema.json').decode('utf-8')
         responses.add(responses.GET, self.schema_url,
                       json=json.loads(self.schema_file))
 
@@ -444,7 +444,7 @@ class TestCliUpload(unittest.TestCase):
     @responses.activate
     def test_empty_file(self):
         self.schema_url = "http://localhost:5000/api/v1/schema"
-        self.schema_file = resource_string(__name__, 'data/schema.json')
+        self.schema_file = resource_string(__name__, 'data/schema.json').decode('utf-8')
         responses.add(responses.GET, self.schema_url,
                       json=json.loads(self.schema_file))
 
@@ -534,7 +534,7 @@ class TestCliBigUpload(unittest.TestCase):
     @responses.activate
     def test_upload_s3(self):
         self.schema_url = "http://localhost:5000/api/v1/schema"
-        self.schema_file = resource_string(__name__, 'data/schema.json')
+        self.schema_file = resource_string(__name__, 'data/schema.json').decode('utf-8')
         responses.add(responses.GET, self.schema_url,
                       json=json.loads(self.schema_file))
         responses.add(responses.GET, self.multipart_upload_init_url,
