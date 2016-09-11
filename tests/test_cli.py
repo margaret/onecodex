@@ -12,7 +12,7 @@ from pkg_resources import resource_string
 import responses
 from click.testing import CliRunner
 from mock import Mock, patch
-from pyfakefs import fake_filesystem_unittest
+import pytest
 from testfixtures import Replace, Replacer
 from testfixtures.popen import MockPopen
 
@@ -171,7 +171,8 @@ class TestCli(unittest.TestCase):
             "\"$uri\": \"/api/v1/classifications/{}\"".format(self.classification_uri) in fetch_result.output)  # noqa
 
 
-class TestCliLogin(fake_filesystem_unittest.TestCase):
+@pytest.mark.usefixtures("mocked_creds_file")
+class TestCliLogin(unittest.TestCase):
 
     def setUp(self):
         super(TestCliLogin, self).setUp()
@@ -186,9 +187,6 @@ class TestCliLogin(fake_filesystem_unittest.TestCase):
         self._old_endpoint = os.environ.get('ONE_CODEX_API_BASE')
         os.environ['ONE_CODEX_API_BASE'] = "http://localhost:5000"
 
-        self.setUpPyfakefs()
-        os.makedirs(os.path.expanduser("~/"))
-
     def tearDown(self):
         super(TestCliLogin, self).tearDownClass()
         if self._old_endpoint is not None:
@@ -202,7 +200,8 @@ class TestCliLogin(fake_filesystem_unittest.TestCase):
         now = datetime.datetime.now().strftime(DATE_FORMAT)
         fake_creds = {'api_key': self.api_key, 'saved_at': now, 'updated_at': None}
         path = os.path.expanduser("~/.onecodex")
-        self.fs.CreateFile(path, contents=json.dumps(fake_creds))
+        with open(path, mode='w') as f:
+            f.write(json.dumps(fake_creds))
 
     def test_api_login(self):
 
@@ -214,18 +213,19 @@ class TestCliLogin(fake_filesystem_unittest.TestCase):
             self.assertTrue(successful_login_msg in result.output)
 
     def test_creds_file_exists(self):
+        with self.runner.isolated_filesystem():
+            self.make_creds_file()
+            expected_message = "Credentials file already exists"
 
-        self.make_creds_file()
-        expected_message = "Credentials file already exists"
-
-        result = self.runner.invoke(Cli, ["login"])
-        self.assertEqual(result.exit_code, 0)
-        self.assertTrue(expected_message in result.output)
+            result = self.runner.invoke(Cli, ["login"])
+            self.assertEqual(result.exit_code, 0)
+            self.assertTrue(expected_message in result.output)
 
     def test_creds_file_corrupted(self):
 
         path = os.path.expanduser("~/.onecodex")
-        self.fs.CreateFile(path, contents="aslkdjaslkd\nkasjdlkas\nasdkjaslkd908&S&&^")
+        with open(path, mode='w') as f:
+            f.write("aslkdjaslkd\nkasjdlkas\nasdkjaslkd908&S&&^")
         expected_message = "Your ~/.onecodex credentials file appears to be corrupted."
 
         result = self.runner.invoke(Cli, ["login"])
@@ -233,20 +233,19 @@ class TestCliLogin(fake_filesystem_unittest.TestCase):
         self.assertTrue(expected_message in result.output)
 
     def test_logout_creds_exists(self):
-
-        self.make_creds_file()
-        expected_message = "Successfully removed One Codex credentials."
-        path = os.path.expanduser("~/.onecodex")
-
-        result = self.runner.invoke(Cli, ["logout"])
-        self.assertEqual(result.exit_code, 0)
-        self.assertTrue(expected_message in result.output)
-        self.assertFalse(os.path.exists(path))
+        with self.runner.isolated_filesystem():
+            self.make_creds_file()
+            expected_message = "Successfully removed One Codex credentials."
+            path = os.path.expanduser("~/.onecodex")
+            result = self.runner.invoke(Cli, ["logout"])
+            self.assertEqual(result.exit_code, 0)
+            self.assertTrue(expected_message in result.output)
+            self.assertFalse(os.path.exists(path))
 
     def test_logout_creds_dne(self):
-
         expected_message = "No One Codex API keys found."
         result = self.runner.invoke(Cli, ["logout"])
+        print(result, result.__dict__)
         self.assertEqual(result.exit_code, 1)
         self.assertTrue(expected_message in result.output)
 

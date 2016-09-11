@@ -15,7 +15,6 @@ networkx>=1.11
 tox
 flake8
 testfixtures
-pyfakefs
 responses
 coverage
 pytest==3.0.2

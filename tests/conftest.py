@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 import json
+import os
 from pkg_resources import resource_string
 import pytest
 import re
@@ -78,6 +79,7 @@ def mock_requests_decorator(mock_json):
     return decorator
 
 
+# API FIXTURES
 @pytest.fixture(scope='session')
 def ocx():
     """Instantiated API client
@@ -106,3 +108,17 @@ def mock_data():
 
     with mock_requests(json_data):
         yield
+
+
+# CLI / FILE SYSTEM FIXTURE
+@pytest.fixture(scope='function')
+def mocked_creds_file(monkeypatch, tmpdir):
+    # TODO: tmpdir is actually a LocalPath object
+    # from py.path, and we coerce it into a string
+    # for compatibility with the existing library code
+    # *but* we should perhaps *not* do that for
+    # better cross-platform compatibility. Investigate
+    # and update as needed.
+    def mockreturn(path):
+        return os.path.join(str(tmpdir), '.onecodex')
+    monkeypatch.setattr(os.path, 'expanduser', mockreturn)
