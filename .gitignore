@@ -9,4 +9,5 @@ onecodex.egg-info/
 build/
 dist/
 .coverage
-coverage-report/
+htmlcov/
+.DS_Store

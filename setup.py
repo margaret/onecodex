@@ -18,12 +18,6 @@ setup(
         'all': ['numpy>=1.11.0', 'pandas>=0.18.1', 'matplotlib>1.5.1', 'networkx>=1.11']
     },
     dependency_links=[],
-    setup_requires=['pytest-runner'],
-    tests_require=[
-        'flake8', 'tox', 'responses', 'httmock', 'numpy', 'pandas==0.18.1',
-        'requests_toolbelt', 'matplotlib', 'testfixtures', 'pyfakefs', 'coverage',
-        'pytest>=3.0.2', 'mock>=2.0.0'
-    ],
     author='Kyle McChesney & Nick Greenfield & Roderick Bovee',
     author_email='opensource@onecodex.com',
     description='',
