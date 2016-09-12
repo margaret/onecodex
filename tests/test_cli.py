@@ -35,6 +35,15 @@ def test_version(runner):
     assert "onecodex, version" in result.output
 
 
+# Test CLI without base override
+def test_cli_wo_override(mock_cli_data, monkeypatch):
+    monkeypatch.delattr("requests.sessions.Session.request")
+    runner = CliRunner()
+    result = runner.invoke(Cli, ['-v', '--help'])
+    assert result.exit_code == 0
+    assert 'One Codex v1 API command line interface' in result.output
+
+
 # Analyses
 def test_analysis_help(runner, mock_cli_data, mocked_creds_file):
     result = runner.invoke(Cli, ['analyses', '--help'])
@@ -57,6 +66,18 @@ def test_classification_instance(runner, mock_cli_data, mocked_creds_file):
     result = runner.invoke(Cli, ['classifications', '4a668ac6daf74364'])
     assert result.exit_code == 0
     assert MOCK_DATA['classification1']['json']['$uri'] in result.output
+
+
+def test_classifications_table(runner, mock_cli_data, mocked_creds_file, monkeypatch):
+    result = runner.invoke(Cli, ['classifications', '4a668ac6daf74364', '--table'])
+    assert result.exit_code == 0
+    assert "Salmonella" in result.output
+
+
+# Marker panels
+def test_markerpanel_instances(runner, mock_cli_data, mocked_creds_file):
+    result = runner.invoke(Cli, ['markerpanels'])
+    assert result.exit_code == 0
 
 
 # Samples
@@ -100,6 +121,13 @@ def test_creds_file_exists(runner, mocked_creds_file):
         result = runner.invoke(Cli, ["login"])
         assert result.exit_code == 0
         assert expected_message in result.output
+
+
+def test_silent_login(runner, mocked_creds_file, mock_cli_data):
+    with runner.isolated_filesystem():
+        make_creds_file()
+        result = runner.invoke(Cli, ['samples'])
+        assert result.exit_code == 0
 
 
 def test_creds_file_corrupted(runner, mocked_creds_file):
@@ -181,7 +209,10 @@ def test_large_uploads(runner, upload_mocks, monkeypatch,
     from mock import Mock
 
     def mockfilesize(path):
-        return 5 * 1000 * 1000 * 1000 + 1
+        if 'large' in path:
+            return 5 * 1000 * 1000 * 1000 + 1
+        else:
+            return 500  # small
 
     monkeypatch.setattr(os.path, 'getsize', mockfilesize)
 

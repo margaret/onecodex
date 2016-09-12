@@ -60,9 +60,17 @@ def pprint(j, no_pretty):
 
 
 def cli_resource_fetcher(ctx, resource, uris):
+    """Helper method to parse CLI args in API calls
     """
-    Help method to parse CLI args into api calls
-    """
+    try:
+        _cli_resource_fetcher(ctx, resource, uris)
+    except requests.exceptions.HTTPError:
+        echo("Failed to authenticate. Please check your API key "
+             "or trying logging out and back in with `onecodex logout` "
+             "and `onecodex login`.")
+
+
+def _cli_resource_fetcher(ctx, resource, uris):
     # analyses is passed, want Analyses
     resource_name = resource[0].upper() + resource[1:]
     if len(uris) == 0:
@@ -72,7 +80,6 @@ def cli_resource_fetcher(ctx, resource, uris):
         instances = getattr(ctx.obj['API'], resource_name).all()
         cli_log.info("Fetched %i %ss", len(instances), resource)
         pprint([x._resource._properties for x in instances], ctx.obj['NOPPRINT'])
-
     else:
         uris = list(set(uris))
         cli_log.info("Fetching %s: %s", resource_name, ",".join(uris))

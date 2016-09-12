@@ -45,6 +45,7 @@ def test_is_valid_api_key():
     ('Samples', ['7428cca4a3a04a8e']),
     ('Analyses', []),
     ('Analyses', ['4a668ac6daf74364']),
+    ('Markerpanels', [])
 ])
 def test_fetcher(ocx, mock_cli_data, resource, uris):
     if len(uris) == 0:

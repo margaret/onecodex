@@ -50,7 +50,8 @@ def _login(server, check_for_update=True, creds_file=None):
     # check if exists and is okay
     if os.path.exists(fp):
         try:
-            creds = json.load(open(fp, mode='r'))
+            with open(fp, mode='r') as f:
+                creds = json.load(f)
         except ValueError:
             click.echo("Your ~/.onecodex credentials file appears to be corrupted."  # noqa
                    "Please delete it and re-authorize.", err=True)
@@ -70,7 +71,8 @@ def _login(server, check_for_update=True, creds_file=None):
 
         now = datetime.datetime.now().strftime(DATE_FORMAT)
         creds = {'api_key': api_key, 'saved_at': now, 'updated_at': None}
-        json.dump(creds, open(fp, mode='w'))
+        with open(fp, mode='w') as f:
+            json.dump(creds, f)
         click.echo("Your ~/.onecodex credentials file successfully created.", err=True)
 
 
@@ -102,8 +104,9 @@ def _silent_login():
 
     if os.path.exists(fp):
         try:
-            creds = json.load(open(fp, mode='r'))
-            return creds["api_key"]
+            with open(fp, mode='r') as f:
+                creds = json.load(f)
+                return creds["api_key"]
         except ValueError:
             # TODO: NEED A LOGGER CONFIGURED FOR THIS FILE...
             log.error("Your ~/.onecodex credentials "

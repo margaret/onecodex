@@ -51,7 +51,9 @@ def check_version(version, server_url, client='cli'):
         Could use python package `semver` if we need more precise checks in
         edge cases, but this generally works for now.
         """
-        return tuple(client_version.split('.')) < tuple(server_version.split('.'))
+        client_version = tuple([int(x) for x in client_version.split('.')])
+        server_version = tuple([int(x) for x in server_version.split('.')])
+        return client_version < server_version
 
     if client == 'cli':
         # TODO: update this for the new v1 client route
@@ -80,9 +82,11 @@ def check_version(version, server_url, client='cli'):
             return True, ('Please upgrade your client to the latest version ' +
                           '(v{}){}; '.format(latest_version, uploader_text) +
                           'this version (v{}) is no longer supported.'.format(version))
+        else:
+            return False, None
 
     if version_inadequate(version, latest_version):
-        return False, ('Please upgrade your client to the latest version ' +
-                       '(v{}){}'.format(latest_version, uploader_text))
+        return True, ('Please upgrade your client to the latest version ' +
+                      '(v{}){}'.format(latest_version, uploader_text))
 
     return False, None

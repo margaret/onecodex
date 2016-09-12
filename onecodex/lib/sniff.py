@@ -168,30 +168,30 @@ def sniff_ids(ids):
     #     'gi': 'NCBI'  # ?
     # }
 
-#    assemblers = {
-#        'trinity': r'c\d+_g\d+_\w+',  # http://seqanswers.com/forums/showthread.php?t=43749
-#        'idba': '',
-#        # based off sequences from http://gage.cbcb.umd.edu/data/Staphylococcus_aureus/
-#        'abyss_contig': r'[\d.]+ \d+ \d+ (?P<seq_len>\d+) [f]',
-#        'abyss_scaffold': r'\d+ \d+ (?P<seq_len>\d+)',
-#        'allpaths_contig': r'contig_\d+',
-#        'allpaths_scaffold': r'scaffold_\d+',
-#        'bambus_contig': 'scf\d+_\d+',
-#        'cabog,msrca_contig': 'ctg\d+',
-#        'bambus,cabog,msrca_scaffold': 'scf\d+',
-#        'sga_contig': 'contig-\d+ (?P<seq_len>\d+) \d',
-#        'sga_scaffold': 'scaffold-\d+ (?P<seq_len>\d+)',
-#        'soapdenovo_contig': 'C[\d.]+ C\d+ \d (?P<seq_len>\d+) [f]',
-#        'soapdenovo_scaffold': 'C\d+ [\d.]+',
-#        'velvet_contig': 'velvet.\d+.\d+ \d+ (?P<seq_len>\d+)',
-#        'velvet_scaffold': 'velvet.\d+ NODE_\d+_length_(?P<seq_len>\d+)_cov_(?P<seq_cov>[\d.]+)'
-#        # based off sequences from http://gigadb.org/dataset/100060
-#
-#        # see badger for 454 sequencing files
-#
-#        # based off http://www.ncbi.nlm.nih.gov/sra?term=SRA026860
-#        # http://korflab.ucdavis.edu/Datasets/Assemblathon/Assemblathon1/Entries/
-#    }
+    #    assemblers = {
+    #        'trinity': r'c\d+_g\d+_\w+',  # http://seqanswers.com/forums/showthread.php?t=43749
+    #        'idba': '',
+    #        # based off sequences from http://gage.cbcb.umd.edu/data/Staphylococcus_aureus/
+    #        'abyss_contig': r'[\d.]+ \d+ \d+ (?P<seq_len>\d+) [f]',
+    #        'abyss_scaffold': r'\d+ \d+ (?P<seq_len>\d+)',
+    #        'allpaths_contig': r'contig_\d+',
+    #        'allpaths_scaffold': r'scaffold_\d+',
+    #        'bambus_contig': 'scf\d+_\d+',
+    #        'cabog,msrca_contig': 'ctg\d+',
+    #        'bambus,cabog,msrca_scaffold': 'scf\d+',
+    #        'sga_contig': 'contig-\d+ (?P<seq_len>\d+) \d',
+    #        'sga_scaffold': 'scaffold-\d+ (?P<seq_len>\d+)',
+    #        'soapdenovo_contig': 'C[\d.]+ C\d+ \d (?P<seq_len>\d+) [f]',
+    #        'soapdenovo_scaffold': 'C\d+ [\d.]+',
+    #        'velvet_contig': 'velvet.\d+.\d+ \d+ (?P<seq_len>\d+)',
+    #        'velvet_scaffold': 'velvet.\d+ NODE_\d+_length_(?P<seq_len>\d+)_cov_(?P<seq_cov>[\d.]+)'  # noqa
+    #        # based off sequences from http://gigadb.org/dataset/100060
+    #
+    #        # see badger for 454 sequencing files
+    #
+    #        # based off http://www.ncbi.nlm.nih.gov/sra?term=SRA026860
+    #        # http://korflab.ucdavis.edu/Datasets/Assemblathon/Assemblathon1/Entries/
+    #    }
 
     # sequencers = {
     #     # http://support.illumina.com/help/SequencingAnalysisWorkflow/Content/
@@ -246,6 +246,7 @@ def read_fastq(data):
     qual_set = qual_set.difference({'\n', '\r', ' ', '\t'})
     # https://en.wikipedia.org/wiki/FASTQ_format#Encoding
     printable = [chr(i) for i in range(33, 127)]
+    print(qual_set)
     if qual_set.issubset(printable[0:41]):
         # we call sanger before illumina 1.8 b/c it's a technically more restricted subset
         status['qual_type'] = 'sanger'

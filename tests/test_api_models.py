@@ -1,12 +1,11 @@
 from __future__ import print_function
 import datetime
+import pandas as pd
+
+import onecodex
 from onecodex import Api
 from onecodex.exceptions import MethodNotSupported
 import pytest
-
-
-def test_api_fixture(ocx):
-    assert isinstance(ocx, Api)
 
 
 def test_api_creation(mock_data):
@@ -76,3 +75,10 @@ def test_dir_patching(ocx, mock_data):
     for prop in props:
         assert prop in dir(sample)
     assert len(sample.__dict__) == 1  # I'm not sure we *want* this...
+
+
+def test_classification_methods(ocx, mock_data):
+    classification = ocx.Classifications.get('464a7ebcf9f84050')
+    assert isinstance(classification, onecodex.models.analysis.Classifications)
+    t = classification.table()
+    assert isinstance(t, pd.DataFrame)

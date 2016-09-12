@@ -20,7 +20,7 @@ class Classifications(Analyses):
     @staticmethod
     def to_otu(classifications):
         """
-        Converts a list of classifications into a dictionary resembling
+        Converts a list of classifications int1o a dictionary resembling
             an OTU table.
         """
         otu_format = 'Biological Observation Matrix 0.9.1-dev'
@@ -64,16 +64,19 @@ class Classifications(Analyses):
 
         return otu
 
-    def table(self):
+    def table(self, as_dataframe=True):
         """
         Return the complete results table for the classification.
         Note that self._table starts as undefined
         and only will be set once as needed
         """
-        import pandas as pd
-        if self._table is None:
-            self._table = pd.DataFrame(self._resource.table()['table'])
-        return self._table
+        if not as_dataframe:
+            return self._resource.table()['table']
+        else:
+            import pandas as pd
+            if self._table is None:
+                self._table = pd.DataFrame(self._resource.table()['table'])
+            return self._table
 
     def abundances_df(self, ids=None):
         """
@@ -89,5 +92,5 @@ class Classifications(Analyses):
             return res[res['tax_id'].isin(ids)]
 
 
-class MarkerPanels(Analyses):
+class Markerpanels(Analyses):
     _resource_path = '/api/v1/markerpanels'

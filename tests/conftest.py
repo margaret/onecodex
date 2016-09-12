@@ -62,11 +62,11 @@ def mock_requests(mock_json):
                 method, url = mock_url.split(':')
                 content_type = 'application/json'
             if callable(mock_data):
-                rsps.add_callback(method, re.compile('http://[^/]+/' + url),
+                rsps.add_callback(method, re.compile('http://[^/]+/' + url + '(\?.*)?$'),
                                   callback=mock_data,
                                   content_type=content_type)
             else:
-                rsps.add(method, re.compile('http://[^/]+/' + url),
+                rsps.add(method, re.compile('http://[^/]+/' + url + '(\?.*)?$'),
                          body=mock_data,
                          content_type=content_type)
         yield
@@ -85,11 +85,11 @@ def mock_requests_decorator(mock_json):
                         method, url = mock_url.split(':')
                         content_type = 'application/json'
                     if callable(mock_data):
-                        rsps.add_callback(method, re.compile('http://[^/]+/' + url),
+                        rsps.add_callback(method, re.compile('http://[^/]+/' + url + '(\?.*)?$'),
                                           callback=mock_data,
                                           content_type=content_type)
                     else:
-                        rsps.add(method, re.compile('http://[^/]+/' + url),
+                        rsps.add(method, re.compile('http://[^/]+/' + url + '(\?.*)?$'),
                                  body=mock_data,
                                  content_type=content_type)
                 func(*args, **kwargs)
@@ -117,6 +117,19 @@ MOCK_DATA = {
         'uri': 'GET:api/v1/classifications/4a668ac6daf74364',
         'json': json.loads(rs('data/cli/classification.json'))
     },
+    'classification1_table': {
+        'uri': 'GET:api/v1/classifications/4a668ac6daf74364/table',
+        'json': {
+            "table": [{
+                "name": "Salmonella enterica subsp. enterica",
+                "rank": "subspecies",
+                "readcount": 4642,
+                "readcount_w_children": 4960,
+                "species_abundance": None,
+                "tax_id": 59201
+            }]
+        }
+    },
     'sample1': {
         'uri': 'GET:api/v1/samples/7428cca4a3a04a8e',
         'json': json.loads(rs('data/cli/sample.json'))
@@ -128,6 +141,10 @@ MOCK_DATA = {
     'samples': {
         'uri': 'GET:api/v1/samples',
         'json': [json.loads(rs('data/cli/sample.json'))]
+    },
+    'markerpanels': {
+        'uri': 'GET:api/v1/markerpanels',
+        'json': []
     }
 }
 
@@ -139,6 +156,10 @@ def mock_data():
     json_data = {
         "GET:api/v1/schema": rs('data/schema.json'),
         "GET:api/v1/tags/fb8e3b693c874f9e": "{\"color\":\"#D4E9ED\",\"name\":\"isolate\",\"$uri\":\"/api/v1/tags/fb8e3b693c874f9e\"}",  # noqa
+        "GET:api/v1/classifications/464a7ebcf9f84050/table": json.dumps({
+            "table": []
+        }),
+        "GET:api/v1/classifications/464a7ebcf9f84050": "{\"complete\":true,\"$uri\":\"/api/v1/classifications/464a7ebcf9f84050\",\"created_at\":\"2016-04-26T13:25:38.016211-07:00\",\"success\":true,\"sample\":{\"$ref\":\"/api/v1/samples/7428cca4a3a04a8e\"},\"job\":{\"$ref\":\"/api/v1/jobs/c3caae64b63b4f07\"},\"error_msg\":\"\"}",  # noqa
         "GET:api/v1/analyses/464a7ebcf9f84050": "{\"complete\":true,\"$uri\":\"/api/v1/analyses/464a7ebcf9f84050\",\"created_at\":\"2016-04-26T13:25:38.016211-07:00\",\"success\":true,\"sample\":{\"$ref\":\"/api/v1/samples/7428cca4a3a04a8e\"},\"job\":{\"$ref\":\"/api/v1/jobs/c3caae64b63b4f07\"},\"analysis_type\":\"classification\",\"error_msg\":\"\"}",  # noqa
         "GET:api/v1/samples/7428cca4a3a04a8e": "{\"$uri\":\"/api/v1/samples/7428cca4a3a04a8e\",\"primary_analysis\":{\"$ref\":\"/api/v1/analyses/464a7ebcf9f84050\"},\"created_at\":\"2015-09-25T17:27:19.596555-07:00\",\"tags\":[{\"$ref\":\"/api/v1/tags/42997b7a62634985\"},{\"$ref\":\"/api/v1/tags/fb8e3b693c874f9e\"},{\"$ref\":\"/api/v1/tags/ff4e81909a4348d9\"}],\"filename\":\"SRR2352185.fastq.gz\",\"project\":null,\"owner\":{\"$ref\":\"/api/v1/users/4ada56103d9a48b8\"},\"indexed\":false,\"starred\":false,\"size\":181687821,\"public\":false,\"metadata\":{\"$ref\":\"/api/v1/metadata/a7fc7e430e704e2e\"}}",  # noqa
         "DELETE:api/v1/samples/7428cca4a3a04a8e": "{\"success\": true}",

@@ -74,7 +74,7 @@ def onecodex(ctx, api_key, no_pprint, verbose):
                 ctx.obj['API'] = Api(base_url=base_url, extensions=False,
                                      cache_schema=True, api_key=api_key)
             else:
-                click.echo("No One Codex API key available - running anonymously")
+                click.echo("No One Codex API key available - running anonymously", err=True)
                 ctx.obj['API'] = Api(base_url=base_url, extensions=False, cache_schema=True)
 
     # handle checking insecure platform, we let upload command do it by itself
@@ -113,7 +113,7 @@ def classifications(ctx, classifications, table, raw, raw_path):
             log.error("Can only request table data on one Classification at a time")
         else:
             classification = ctx.obj['API'].Classifications.get(classifications[0])
-            results = classification.table()['table']
+            results = classification.table(as_dataframe=False)
             pprint(results, ctx.obj['NOPPRINT'])
 
     # fetch the raw
