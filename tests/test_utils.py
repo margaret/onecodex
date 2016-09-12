@@ -38,3 +38,19 @@ def test_is_valid_api_key():
             valid_api_key_partial(key)
 
     assert good_key == valid_api_key_partial(good_key)
+
+
+@pytest.mark.parametrize('resource,uris', [
+    ('Samples', []),
+    ('Samples', ['7428cca4a3a04a8e']),
+    ('Analyses', []),
+    ('Analyses', ['4a668ac6daf74364']),
+])
+def test_fetcher(ocx, mock_cli_data, resource, uris):
+    if len(uris) == 0:
+        pass
+    else:
+        for uri in uris:
+            resource_class = getattr(ocx, resource)
+            instance = resource_class.get(uri)
+            assert instance is not None
