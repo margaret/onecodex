@@ -11,7 +11,7 @@ class Samples(OneCodexBase):
     _resource_path = '/api/v1/samples'
 
     @classmethod
-    def find(cls, *filters, **keyword_filters):
+    def where(cls, *filters, **keyword_filters):
         instances_route = keyword_filters.get('_instances', 'instances')
         limit = keyword_filters.pop('limit', None)
 
@@ -50,11 +50,11 @@ class Samples(OneCodexBase):
             # keyword_filters['sort'] = passthrough_sort
 
             if len(md_search_keywords) > 0:
-                metadata_samples = [md.sample for md in SampleMetadata.find(**md_search_keywords)]
+                metadata_samples = [md.sample for md in SampleMetadata.where(**md_search_keywords)]
 
         samples = []
         if len(metadata_samples) == 0:
-            samples = super(Samples, cls).find(*filters, **keyword_filters)
+            samples = super(Samples, cls).where(*filters, **keyword_filters)
 
         if len(samples) > 0 and len(metadata_samples) > 0:
             # we need to filter samples to just include stuff from metadata_samples
@@ -69,15 +69,15 @@ class Samples(OneCodexBase):
         return samples[:limit]
 
     @classmethod
-    def find_public(cls, *filters, **keyword_filters):
+    def where_public(cls, *filters, **keyword_filters):
         keyword_filters['_instances'] = 'instances_public'
         keyword_filters['limit'] = 100
-        return cls.find(filters, keyword_filters)
+        return cls.where(filters, keyword_filters)
 
     @classmethod
-    def find_project(cls, *filters, **keyword_filters):
+    def where_project(cls, *filters, **keyword_filters):
         keyword_filters['_instances'] = 'instances_project'
-        return cls.find(filters, keyword_filters)
+        return cls.where(filters, keyword_filters)
 
     def save(self):
         """

@@ -131,14 +131,14 @@ class OneCodexBase(object):
     @classmethod
     def all(cls, sort=None, limit=None):
         """
-        Returns all of the {classname}. Alias for {classname}.find() (without filter arguments).
+        Returns all of the {classname}. Alias for {classname}.where() (without filter arguments).
 
-        See `{classname}.find` for documentation on the `sort` and `limit` parameters.
+        See `{classname}.where` for documentation on the `sort` and `limit` parameters.
         """.format(classname=cls.__name__)
-        return cls.find(sort=sort, limit=limit)
+        return cls.where(sort=sort, limit=limit)
 
     @classmethod
-    def find(cls, *filters, **keyword_filters):
+    def where(cls, *filters, **keyword_filters):
         """
         Retrieves {classname} from the One Codex server.
 

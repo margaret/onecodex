@@ -198,8 +198,8 @@ class TestQueryInterface(unittest.TestCase):
     @responses.activate
     def test_where(self):
 
-        self.assertTrue(hasattr(self.api.Analyses, 'find'))   # TODO: Rename
-        self.assertTrue(hasattr(self.api.Analyses.find, '__call__'))
+        self.assertTrue(hasattr(self.api.Analyses, 'where'))
+        self.assertTrue(hasattr(self.api.Analyses.where, '__call__'))
 
         responses.add(responses.GET, self.complete_url,
                       json=json.loads(self.complete_analyses),
@@ -214,7 +214,7 @@ class TestQueryInterface(unittest.TestCase):
                       match_querystring=True)
 
         # new way
-        new_complete_analyses = self.api.Analyses.find(complete=True)
+        new_complete_analyses = self.api.Analyses.where(complete=True)
         self.assertEqual(len(new_complete_analyses), self.num_complete)
 
         responses.add(responses.GET, self.incomplete_url,
@@ -230,5 +230,5 @@ class TestQueryInterface(unittest.TestCase):
                       match_querystring=True)
 
         # new way
-        new_incomplete_analyses = self.api.Analyses.find(complete=False)
+        new_incomplete_analyses = self.api.Analyses.where(complete=False)
         self.assertEqual(len(new_incomplete_analyses), self.num_incomplete)
