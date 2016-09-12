@@ -56,9 +56,19 @@ def intercept(func, log=False, dump=None):
 def mock_requests(mock_json):
     with responses.mock as rsps:
         for mock_url, mock_data in mock_json.items():
-            method, url = mock_url.split(':')
-            rsps.add(method, re.compile('http://[^/]+/' + url), body=mock_data,
-                     content_type='application/json')
+            try:
+                method, url, content_type = mock_url.split(':')
+            except ValueError:
+                method, url = mock_url.split(':')
+                content_type = 'application/json'
+            if callable(mock_data):
+                rsps.add_callback(method, re.compile('http://[^/]+/' + url),
+                                  callback=mock_data,
+                                  content_type=content_type)
+            else:
+                rsps.add(method, re.compile('http://[^/]+/' + url),
+                         body=mock_data,
+                         content_type=content_type)
         yield
         assert len(responses.calls) > 0
 
@@ -70,27 +80,57 @@ def mock_requests_decorator(mock_json):
             print(args, kwargs)
             with responses.mock as rsps:
                 for mock_url, mock_data in mock_json.items():
-                    method, url = mock_url.split(':')
-                    rsps.add(method, re.compile('http://[^/]+/' + url), body=mock_data,
-                             content_type='application/json')
+                    try:
+                        method, url, content_type = mock_url.split(':')
+                    except ValueError:
+                        method, url = mock_url.split(':')
+                        content_type = 'application/json'
+                    if callable(mock_data):
+                        rsps.add_callback(method, re.compile('http://[^/]+/' + url),
+                                          callback=mock_data,
+                                          content_type=content_type)
+                    else:
+                        rsps.add(method, re.compile('http://[^/]+/' + url),
+                                 body=mock_data,
+                                 content_type=content_type)
                 func(*args, **kwargs)
                 assert len(responses.calls) > 0
         return wrapper
     return decorator
 
 
-# API FIXTURES
-@pytest.fixture(scope='session')
-def ocx():
-    """Instantiated API client
-    """
-    schema_mock = {
-        "GET:api/v1/schema": resource_string(__name__, 'data/schema.json').decode('utf-8')
+def rs(path):
+    return resource_string(__name__, path).decode('utf-8')
+
+
+# Organized by resources
+# then a tuple of the path, and JSON
+MOCK_DATA = {
+    'schema': {
+        'uri': 'GET:api/v1/schema',
+        'json': json.loads(rs('data/schema.json'))
+    },
+    'analysis1': {
+        'uri': 'GET:api/v1/analyses/4a668ac6daf74364',
+        'json': json.loads(rs('data/cli/analysis.json'))
+    },
+    'classification1': {
+        'uri': 'GET:api/v1/classifications/4a668ac6daf74364',
+        'json': json.loads(rs('data/cli/classification.json'))
+    },
+    'sample1': {
+        'uri': 'GET:api/v1/samples/7428cca4a3a04a8e',
+        'json': json.loads(rs('data/cli/sample.json'))
+    },
+    'analyses': {
+        'uri': 'GET:api/v1/analyses',
+        'json': [json.loads(rs('data/cli/analysis.json'))]
+    },
+    'samples': {
+        'uri': 'GET:api/v1/samples',
+        'json': [json.loads(rs('data/cli/sample.json'))]
     }
-    with mock_requests(schema_mock):
-        ocx = Api(api_key='1eab4217d30d42849dbde0cd1bb94e39',
-                  base_url='http://localhost:3000', cache_schema=True)
-        return ocx
+}
 
 
 @pytest.fixture(scope='function')
@@ -98,7 +138,7 @@ def mock_data():
     """Simple mock data for the API, note includes ?schema
     """
     json_data = {
-        "GET:api/v1/schema": resource_string(__name__, 'data/schema.json').decode('utf-8'),  # noqa
+        "GET:api/v1/schema": rs('data/schema.json'),
         "GET:api/v1/tags/fb8e3b693c874f9e": "{\"color\":\"#D4E9ED\",\"name\":\"isolate\",\"$uri\":\"/api/v1/tags/fb8e3b693c874f9e\"}",  # noqa
         "GET:api/v1/analyses/464a7ebcf9f84050": "{\"complete\":true,\"$uri\":\"/api/v1/analyses/464a7ebcf9f84050\",\"created_at\":\"2016-04-26T13:25:38.016211-07:00\",\"success\":true,\"sample\":{\"$ref\":\"/api/v1/samples/7428cca4a3a04a8e\"},\"job\":{\"$ref\":\"/api/v1/jobs/c3caae64b63b4f07\"},\"analysis_type\":\"classification\",\"error_msg\":\"\"}",  # noqa
         "GET:api/v1/samples/7428cca4a3a04a8e": "{\"$uri\":\"/api/v1/samples/7428cca4a3a04a8e\",\"primary_analysis\":{\"$ref\":\"/api/v1/analyses/464a7ebcf9f84050\"},\"created_at\":\"2015-09-25T17:27:19.596555-07:00\",\"tags\":[{\"$ref\":\"/api/v1/tags/42997b7a62634985\"},{\"$ref\":\"/api/v1/tags/fb8e3b693c874f9e\"},{\"$ref\":\"/api/v1/tags/ff4e81909a4348d9\"}],\"filename\":\"SRR2352185.fastq.gz\",\"project\":null,\"owner\":{\"$ref\":\"/api/v1/users/4ada56103d9a48b8\"},\"indexed\":false,\"starred\":false,\"size\":181687821,\"public\":false,\"metadata\":{\"$ref\":\"/api/v1/metadata/a7fc7e430e704e2e\"}}",  # noqa
@@ -108,6 +148,68 @@ def mock_data():
 
     with mock_requests(json_data):
         yield
+
+
+@pytest.fixture(scope='function')
+def mock_cli_data():
+    """Mock data for CLI tests
+    """
+    json_data = {}
+    for resource in MOCK_DATA.values():
+        json_data[resource['uri']] = json.dumps(resource['json'])
+
+    with mock_requests(json_data):
+        yield
+
+
+@pytest.fixture(scope='function')
+def upload_mocks():
+    def upload_callback(request):
+        return (201, {'location': 'on-aws'}, json.dumps({}))
+
+    json_data = {
+        "GET:api/v1/schema": rs('data/schema.json'),
+        'GET:api/v1/samples/presign_upload': json.dumps({
+            'callback_url': '/api/confirm_upload',
+            'signing_url': '/s3_sign',
+            'url': 'http://localhost:3000/fake_aws_callback'
+        }),
+        'POST:api/confirm_upload': '',
+        'POST:s3_sign': json.dumps({
+            'AWSAccessKeyId': 'AKIAI36HUSHZTL3A7ORQ',
+            'success_action_status': 201,
+            'acl': 'private',
+            'key': 'asd/file_ab6276c673814123/myfile.fastq',
+            'signature': 'asdjsa',
+            'policy': '123123123',
+            'x-amz-server-side-encryption': 'AES256'
+        }),
+        'POST:fake_aws_callback:multipart/form-data': upload_callback,
+        'GET:api/v1/samples/init_multipart_upload': json.dumps({
+            'callback_url': '/api/import_file_from_s3',
+            'file_id': 'abcdef0987654321',
+            's3_bucket': 'onecodex-multipart-uploads-encrypted',
+            'upload_aws_access_key_id': 'aws_key',
+            'upload_aws_secret_access_key': 'aws_secret_key'
+        }),
+        'POST:api/import_file_from_s3': '',
+    }
+    with mock_requests(json_data):
+        yield
+
+
+# API FIXTURES
+@pytest.fixture(scope='session')
+def ocx():
+    """Instantiated API client
+    """
+    schema_mock = {
+        "GET:api/v1/schema": rs('data/schema.json')
+    }
+    with mock_requests(schema_mock):
+        ocx = Api(api_key='1eab4217d30d42849dbde0cd1bb94e39',
+                  base_url='http://localhost:3000', cache_schema=True)
+        return ocx
 
 
 # CLI / FILE SYSTEM FIXTURE
