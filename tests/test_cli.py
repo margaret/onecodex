@@ -9,7 +9,7 @@ import pytest
 from testfixtures import Replace
 
 # Module imports
-from conftest import MOCK_DATA
+from tests.conftest import MOCK_DATA
 from onecodex import Cli
 
 DATE_FORMAT = '%Y-%m-%d %H:%M'

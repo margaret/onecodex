@@ -226,6 +226,13 @@ class OneCodexBase(object):
         # we're just retrieving one object from its uuid
         try:
             resource = cls._resource.fetch(uuid)
+            if isinstance(resource, list):
+                # TODO: Investigate why potion .fetch()
+                #       method is occassionally returning a list here...
+                if len(resource) == 1:
+                    resource = resource[0]
+                else:
+                    raise TypeError("Potion-Client error in fetching resource")
         except HTTPError as e:
             # 404 error means this doesn't exist
             if e.response.status_code == 404:
