@@ -1,5 +1,3 @@
-import json
-
 from onecodex.lib.auth import check_version
 from onecodex.lib.sniff import sniff
 import pytest
@@ -18,13 +16,13 @@ from tests.conftest import mock_requests
 ])
 def test_check_version(client_version, server_version, min_version, client, requires_update):
     json_data = {
-        "POST:api/v0/check_for_cli_update": json.dumps({
+        "POST::api/v0/check_for_cli_update": {
             "latest_version": server_version
-        }),
-        "POST:api/v0/check_upload_app_version": json.dumps({
+        },
+        "POST::api/v0/check_upload_app_version": {
             "latest_version": server_version,
             "min_supported_version": min_version
-        })
+        }
     }
     url = "http://localhost:3000/"
     with mock_requests(json_data):

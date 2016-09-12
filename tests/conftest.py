@@ -52,14 +52,15 @@ def intercept(func, log=False, dump=None):
         func()
 
 
+# TODO: Fix a bug wherein this will return all the items to potion
+#       but potion will still try to request subsequent pages... (it's stubborn!)
+#       CRITICALLY THIS MEANS THAT TEST CASES SHOULD ONLY USE THE FIRST 20 ITEMS
 @contextmanager
 def mock_requests(mock_json):
     with responses.mock as rsps:
         for mock_url, mock_data in mock_json.items():
-            try:
-                method, url, content_type = mock_url.split(':')
-            except ValueError:
-                method, url = mock_url.split(':')
+            method, content_type, url = mock_url.split(':', 2)
+            if not content_type:
                 content_type = 'application/json'
             if callable(mock_data):
                 rsps.add_callback(method, re.compile('http://[^/]+/' + url + '(\?.*)?$'),
@@ -67,7 +68,7 @@ def mock_requests(mock_json):
                                   content_type=content_type)
             else:
                 rsps.add(method, re.compile('http://[^/]+/' + url + '(\?.*)?$'),
-                         body=mock_data,
+                         body=json.dumps(mock_data),
                          content_type=content_type)
         yield
 
@@ -76,13 +77,10 @@ def mock_requests(mock_json):
 def mock_requests_decorator(mock_json):
     def decorator(func):
         def wrapper(*args, **kwargs):
-            print(args, kwargs)
             with responses.mock as rsps:
                 for mock_url, mock_data in mock_json.items():
-                    try:
-                        method, url, content_type = mock_url.split(':')
-                    except ValueError:
-                        method, url = mock_url.split(':')
+                    method, content_type, url = mock_url.split(':', 2)
+                    if not content_type:
                         content_type = 'application/json'
                     if callable(mock_data):
                         rsps.add_callback(method, re.compile('http://[^/]+/' + url + '(\?.*)?$'),
@@ -102,118 +100,68 @@ def rs(path):
     return resource_string(__name__, path).decode('utf-8')
 
 
-# Organized by resources
-# then a tuple of the path, and JSON
-MOCK_DATA = {
-    'schema': {
-        'uri': 'GET:api/v1/schema',
-        'json': json.loads(rs('data/schema.json'))
+def json_resource(path):
+    return json.loads(rs(path))
+
+
+# All of the API data
+# Scheme is
+# METHOD:CONTENT_TYPE:URL  (content-type is optional)
+# and then data is JSON or a callable
+API_DATA = {
+    # These are overrides for non-GET calls, which we don't auto-mock
+    "DELETE::api/v1/samples/761bc54b97f64980": {},
+    "GET::api/v1/classifications/f9e4a5506b154953/table": {
+        "table": [{
+            "name": "Salmonella enterica subsp. enterica",
+            "rank": "subspecies",
+            "readcount": 4642,
+            "readcount_w_children": 4960,
+            "species_abundance": None,
+            "tax_id": 59201
+        }]
     },
-    'analysis1': {
-        'uri': 'GET:api/v1/analyses/4a668ac6daf74364',
-        'json': json.loads(rs('data/cli/analysis.json'))
-    },
-    'classification1': {
-        'uri': 'GET:api/v1/classifications/4a668ac6daf74364',
-        'json': json.loads(rs('data/cli/classification.json'))
-    },
-    'classification1_table': {
-        'uri': 'GET:api/v1/classifications/4a668ac6daf74364/table',
-        'json': {
-            "table": [{
-                "name": "Salmonella enterica subsp. enterica",
-                "rank": "subspecies",
-                "readcount": 4642,
-                "readcount_w_children": 4960,
-                "species_abundance": None,
-                "tax_id": 59201
-            }]
-        }
-    },
-    'sample1': {
-        'uri': 'GET:api/v1/samples/7428cca4a3a04a8e',
-        'json': json.loads(rs('data/cli/sample.json'))
-    },
-    'analyses': {
-        'uri': 'GET:api/v1/analyses',
-        'json': [json.loads(rs('data/cli/analysis.json'))]
-    },
-    'samples': {
-        'uri': 'GET:api/v1/samples',
-        'json': [json.loads(rs('data/cli/sample.json'))]
-    },
-    'markerpanels': {
-        'uri': 'GET:api/v1/markerpanels',
-        'json': []
-    }
 }
 
+for filename in os.listdir('tests/api_data'):
+    if not filename.endswith('.json'):
+        continue
 
-@pytest.fixture(scope='function')
-def mock_data():
-    """Simple mock data for the API, note includes ?schema
-    """
-    json_data = {
-        "GET:api/v1/schema": rs('data/schema.json'),
-        "GET:api/v1/tags/fb8e3b693c874f9e": "{\"color\":\"#D4E9ED\",\"name\":\"isolate\",\"$uri\":\"/api/v1/tags/fb8e3b693c874f9e\"}",  # noqa
-        "GET:api/v1/classifications/464a7ebcf9f84050/table": json.dumps({
-            "table": []
-        }),
-        "GET:api/v1/classifications/464a7ebcf9f84050": "{\"complete\":true,\"$uri\":\"/api/v1/classifications/464a7ebcf9f84050\",\"created_at\":\"2016-04-26T13:25:38.016211-07:00\",\"success\":true,\"sample\":{\"$ref\":\"/api/v1/samples/7428cca4a3a04a8e\"},\"job\":{\"$ref\":\"/api/v1/jobs/c3caae64b63b4f07\"},\"error_msg\":\"\"}",  # noqa
-        "GET:api/v1/analyses/464a7ebcf9f84050": "{\"complete\":true,\"$uri\":\"/api/v1/analyses/464a7ebcf9f84050\",\"created_at\":\"2016-04-26T13:25:38.016211-07:00\",\"success\":true,\"sample\":{\"$ref\":\"/api/v1/samples/7428cca4a3a04a8e\"},\"job\":{\"$ref\":\"/api/v1/jobs/c3caae64b63b4f07\"},\"analysis_type\":\"classification\",\"error_msg\":\"\"}",  # noqa
-        "GET:api/v1/samples/7428cca4a3a04a8e": "{\"$uri\":\"/api/v1/samples/7428cca4a3a04a8e\",\"primary_analysis\":{\"$ref\":\"/api/v1/analyses/464a7ebcf9f84050\"},\"created_at\":\"2015-09-25T17:27:19.596555-07:00\",\"tags\":[{\"$ref\":\"/api/v1/tags/42997b7a62634985\"},{\"$ref\":\"/api/v1/tags/fb8e3b693c874f9e\"},{\"$ref\":\"/api/v1/tags/ff4e81909a4348d9\"}],\"filename\":\"SRR2352185.fastq.gz\",\"project\":null,\"owner\":{\"$ref\":\"/api/v1/users/4ada56103d9a48b8\"},\"indexed\":false,\"starred\":false,\"size\":181687821,\"public\":false,\"metadata\":{\"$ref\":\"/api/v1/metadata/a7fc7e430e704e2e\"}}",  # noqa
-        "DELETE:api/v1/samples/7428cca4a3a04a8e": "{\"success\": true}",
-        "GET:api/v1/tags/ff4e81909a4348d9": "{\"color\":\"#D4E9ED\",\"name\":\"S. enterica\",\"$uri\":\"/api/v1/tags/ff4e81909a4348d9\"}",  # noqa
-        "GET:api/v1/tags/42997b7a62634985": "{\"color\":\"#8DCEA8\",\"name\":\"environmental\",\"$uri\":\"/api/v1/tags/42997b7a62634985\"}",  # noqa
-        "GET:api/v1/metadata/a7fc7e430e704e2e": json.dumps({
-            "$uri": "/api/v1/metadata/a7fc7e430e704e2e",
-            "date_collected": "2016-04-26T13:25:38.016211-07:00",
-            "date_sequenced": None,
-            "description": "PRJNA295366/SRR2352185: environmental swab, state #1, site #1",
-            "external_sample_id": None,
-            "library_type": None,
-            "location_lat": None,
-            "location_lon": None,
-            "location_string": None,
-            "name": "ASM_01 - Salmonella Enteritidis - environmental swab, state #1, site #1",
-            "platform": None,
-            "sample": {
-                "$ref": "/api/v1/samples/7428cca4a3a04a8e"
-            },
-            "sample_type": None
-        })
-    }
+    resource = json.load(open(os.path.join('tests/api_data', filename)))
+    resource_name = filename.replace('.json', '')
+    print "RESOURCE NAME ", resource_name
+    resource_uri = "GET::api/v1/{}".format(resource_name)
+    API_DATA[resource_uri] = resource
+    if resource_name == 'schema':
+        continue
 
-    with mock_requests(json_data):
-        yield
+    # Then iterate through all instances
+    if isinstance(resource, list):
+        for instance in resource:
+            instance_uri = "GET::{}".format(instance['$uri'].lstrip('/'))
+            API_DATA[instance_uri] = instance
 
 
 @pytest.fixture(scope='function')
-def mock_cli_data():
-    """Mock data for CLI tests
-    """
-    json_data = {}
-    for resource in MOCK_DATA.values():
-        json_data[resource['uri']] = json.dumps(resource['json'])
-
-    with mock_requests(json_data):
+def api_data():
+    with mock_requests(API_DATA):
         yield
 
 
 @pytest.fixture(scope='function')
 def upload_mocks():
     def upload_callback(request):
-        return (201, {'location': 'on-aws'}, json.dumps({}))
+        return (201, {'location': 'on-aws'}, {})
 
     json_data = {
-        "GET:api/v1/schema": rs('data/schema.json'),
-        'GET:api/v1/samples/presign_upload': json.dumps({
+        "GET::api/v1/schema": json.loads(rs('api_data/schema.json')),
+        'GET::api/v1/samples/presign_upload': {
             'callback_url': '/api/confirm_upload',
             'signing_url': '/s3_sign',
             'url': 'http://localhost:3000/fake_aws_callback'
-        }),
-        'POST:api/confirm_upload': '',
-        'POST:s3_sign': json.dumps({
+        },
+        'POST::api/confirm_upload': '',
+        'POST::s3_sign': {
             'AWSAccessKeyId': 'AKIAI36HUSHZTL3A7ORQ',
             'success_action_status': 201,
             'acl': 'private',
@@ -221,16 +169,16 @@ def upload_mocks():
             'signature': 'asdjsa',
             'policy': '123123123',
             'x-amz-server-side-encryption': 'AES256'
-        }),
-        'POST:fake_aws_callback:multipart/form-data': upload_callback,
-        'GET:api/v1/samples/init_multipart_upload': json.dumps({
+        },
+        'POST:multipart/form-data:fake_aws_callback': upload_callback,
+        'GET::api/v1/samples/init_multipart_upload': {
             'callback_url': '/api/import_file_from_s3',
             'file_id': 'abcdef0987654321',
             's3_bucket': 'onecodex-multipart-uploads-encrypted',
             'upload_aws_access_key_id': 'aws_key',
             'upload_aws_secret_access_key': 'aws_secret_key'
-        }),
-        'POST:api/import_file_from_s3': '',
+        },
+        'POST::api/import_file_from_s3': '',
     }
     with mock_requests(json_data):
         yield
@@ -242,11 +190,11 @@ def ocx():
     """Instantiated API client
     """
     schema_mock = {
-        "GET:api/v1/schema": rs('data/schema.json')
+        "GET::api/v1/schema": json.loads(rs('api_data/schema.json'))
     }
     with mock_requests(schema_mock):
         ocx = Api(api_key='1eab4217d30d42849dbde0cd1bb94e39',
-                  base_url='http://localhost:3000', cache_schema=True)
+                  base_url='http://localhost:3000', cache_schema=False)
         return ocx
 
 

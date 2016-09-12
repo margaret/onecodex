@@ -246,7 +246,6 @@ def read_fastq(data):
     qual_set = qual_set.difference({'\n', '\r', ' ', '\t'})
     # https://en.wikipedia.org/wiki/FASTQ_format#Encoding
     printable = [chr(i) for i in range(33, 127)]
-    print(qual_set)
     if qual_set.issubset(printable[0:41]):
         # we call sanger before illumina 1.8 b/c it's a technically more restricted subset
         status['qual_type'] = 'sanger'

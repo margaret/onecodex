@@ -10,6 +10,7 @@ from pkg_resources import resource_string
 from onecodex import Api
 
 
+# TODO: Refactor this all into test_api_models.py
 class TestVanillaApi(unittest.TestCase):
 
     @responses.activate

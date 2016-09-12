@@ -42,12 +42,12 @@ def test_is_valid_api_key():
 
 @pytest.mark.parametrize('resource,uris', [
     ('Samples', []),
-    ('Samples', ['7428cca4a3a04a8e']),
+    ('Samples', ['761bc54b97f64980']),
     ('Analyses', []),
-    ('Analyses', ['4a668ac6daf74364']),
+    ('Analyses', ['f9e4a5506b154953']),
     ('Markerpanels', [])
 ])
-def test_fetcher(ocx, mock_cli_data, resource, uris):
+def test_fetcher(ocx, api_data, resource, uris):
     if len(uris) == 0:
         pass
     else:

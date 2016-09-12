@@ -9,7 +9,7 @@ import pytest
 from testfixtures import Replace
 
 # Module imports
-from tests.conftest import MOCK_DATA
+from tests.conftest import API_DATA
 from onecodex import Cli
 
 DATE_FORMAT = '%Y-%m-%d %H:%M'
@@ -36,7 +36,7 @@ def test_version(runner):
 
 
 # Test CLI without base override
-def test_cli_wo_override(mock_cli_data, monkeypatch):
+def test_cli_wo_override(api_data, monkeypatch):
     monkeypatch.delattr("requests.sessions.Session.request")
     runner = CliRunner()
     result = runner.invoke(Cli, ['-v', '--help'])
@@ -45,49 +45,49 @@ def test_cli_wo_override(mock_cli_data, monkeypatch):
 
 
 # Analyses
-def test_analysis_help(runner, mock_cli_data, mocked_creds_file):
+def test_analysis_help(runner, api_data, mocked_creds_file):
     result = runner.invoke(Cli, ['analyses', '--help'])
     analysis_desc = "Retrieve performed analyses"
     assert result.exit_code == 0
     assert analysis_desc in result.output
 
 
-def test_analyses(runner, mock_cli_data, mocked_creds_file):
+def test_analyses(runner, api_data, mocked_creds_file):
     r0 = runner.invoke(Cli, ['analyses'])
-    r1 = runner.invoke(Cli, ['analyses', '4a668ac6daf74364'])
+    r1 = runner.invoke(Cli, ['analyses', 'f9e4a5506b154953'])
     assert r0.exit_code == 0
     assert r1.exit_code == 0
-    assert MOCK_DATA['analysis1']['json']['$uri'] in r0.output
-    assert MOCK_DATA['analysis1']['json']['$uri'] in r1.output
+    assert API_DATA['GET::api/v1/analyses/f9e4a5506b154953']['$uri'] in r0.output
+    assert API_DATA['GET::api/v1/analyses/f9e4a5506b154953']['$uri'] in r1.output
 
 
 # Classifications
-def test_classification_instance(runner, mock_cli_data, mocked_creds_file):
-    result = runner.invoke(Cli, ['classifications', '4a668ac6daf74364'])
+def test_classification_instance(runner, api_data, mocked_creds_file):
+    result = runner.invoke(Cli, ['classifications', 'f9e4a5506b154953'])
     assert result.exit_code == 0
-    assert MOCK_DATA['classification1']['json']['$uri'] in result.output
+    assert API_DATA['GET::api/v1/classifications/f9e4a5506b154953']['$uri'] in result.output
 
 
-def test_classifications_table(runner, mock_cli_data, mocked_creds_file, monkeypatch):
-    result = runner.invoke(Cli, ['classifications', '4a668ac6daf74364', '--table'])
+def test_classifications_table(runner, api_data, mocked_creds_file, monkeypatch):
+    result = runner.invoke(Cli, ['classifications', 'f9e4a5506b154953', '--table'])
     assert result.exit_code == 0
     assert "Salmonella" in result.output
 
 
 # Marker panels
-def test_markerpanel_instances(runner, mock_cli_data, mocked_creds_file):
+def test_markerpanel_instances(runner, api_data, mocked_creds_file):
     result = runner.invoke(Cli, ['markerpanels'])
     assert result.exit_code == 0
 
 
 # Samples
-def test_samples(runner, mock_cli_data, mocked_creds_file):
+def test_samples(runner, api_data, mocked_creds_file):
     r0 = runner.invoke(Cli, ['samples'])
-    r1 = runner.invoke(Cli, ['samples', '7428cca4a3a04a8e'])
+    r1 = runner.invoke(Cli, ['samples', '761bc54b97f64980'])
     assert r0.exit_code == 0
     assert r1.exit_code == 0
-    assert MOCK_DATA['sample1']['json']['$uri'] in r0.output
-    assert MOCK_DATA['sample1']['json']['$uri'] in r1.output
+    assert API_DATA['GET::api/v1/samples/761bc54b97f64980']['$uri'] in r0.output
+    assert API_DATA['GET::api/v1/samples/761bc54b97f64980']['$uri'] in r0.output
 
 
 # Login tests
@@ -123,7 +123,7 @@ def test_creds_file_exists(runner, mocked_creds_file):
         assert expected_message in result.output
 
 
-def test_silent_login(runner, mocked_creds_file, mock_cli_data):
+def test_silent_login(runner, mocked_creds_file, api_data):
     with runner.isolated_filesystem():
         make_creds_file()
         result = runner.invoke(Cli, ['samples'])
