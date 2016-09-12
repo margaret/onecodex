@@ -70,7 +70,6 @@ def mock_requests(mock_json):
                          body=mock_data,
                          content_type=content_type)
         yield
-        assert len(responses.calls) > 0
 
 
 # TODO: Consider deleting in favor of context manager as above
