@@ -130,3 +130,24 @@ class Samples(OneCodexBase):
 
 class Metadata(OneCodexBase):
     _resource_path = '/api/v1/metadata'
+
+    def save(self):
+        if self.id is None:
+            super(Metadata, self).save()  # Create
+        else:  # Update
+            # Hack: Sample is read and create-only
+            # but Potion will try to update since it's not marked
+            # readOnly in the schema; we also make sure
+            # the linked metadata object is resolved since
+            # we auto-save it alongside the sample
+            if self._resource._uri and self._resource._status is None:
+                assert isinstance(self._resource._properties, dict)
+
+            # Then eject samplea and uri as needed
+            ref_props = self._resource._properties
+            if 'sample' in ref_props or '$uri' in ref_props:  # May not be there if not resolved!
+                ref_props.pop('$uri', None)
+                ref_props.pop('sample', None)
+                self._resource._update(ref_props)
+            else:
+                super(Metadata, self).save()

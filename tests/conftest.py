@@ -108,6 +108,35 @@ def json_resource(path):
 # Scheme is
 # METHOD:CONTENT_TYPE:URL  (content-type is optional)
 # and then data is JSON or a callable
+def _make_callback_resp(data, status_code=200):
+    return status_code, {'Content-Type': 'application/json'}, json.dumps(data)
+
+
+def make_potion_callback(status_code=200):
+    def callback(req):
+        data = json.loads(req.body)
+        return _make_callback_resp(data, status_code=status_code)
+    return callback
+
+
+def update_metadata_callback(req):
+    """
+    Check that the metadata PATCH method isn't passing `sample`
+    which will 400. Note this actually erases the sample attribute,
+    which is kind of unfortunate, but a pain to patch without
+    (we'd need to load the mocked metadata obj here and re-inject
+    the sample)
+    """
+    metadata = json.loads(req.body)
+    if 'sample' in metadata or '$uri' in metadata:  # write only field
+        raise ValueError("Invalid metadata!")
+
+    # Need to set $uri and sample for resource to resolve properly
+    metadata['$uri'] = "/api/v1/metadata/4fe05e748b5a4f0e"
+    metadata['sample'] = {"$ref": "/api/v1/samples/761bc54b97f64980"}
+    return _make_callback_resp(metadata)
+
+
 API_DATA = {
     # These are overrides for non-GET calls, which we don't auto-mock
     "DELETE::api/v1/samples/761bc54b97f64980": {},
@@ -122,7 +151,7 @@ API_DATA = {
         }]
     },
     "PATCH::api/v1/samples/761bc54b97f64980": {},
-    "PATCH::api/v1/metadata/4fe05e748b5a4f0e": {}
+    "PATCH::api/v1/metadata/4fe05e748b5a4f0e": update_metadata_callback
 }
 
 for filename in os.listdir('tests/api_data'):

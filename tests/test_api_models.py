@@ -79,8 +79,12 @@ def test_metadata_saving(ocx, api_data):
     metadata1 = sample.metadata
     metadata2 = ocx.Metadata.get('4fe05e748b5a4f0e')
     assert metadata1 == metadata2
+    metadata1.description = 'my new description -- testing!'
     metadata1.date_collected = datetime.datetime.now()
-    # metadata1.save()  # Fails.... :/
+    metadata1.save()
+    assert isinstance(metadata1.date_collected, datetime.datetime)
+    assert metadata1.description == 'my new description -- testing!'
+    assert hasattr(metadata1, 'sample')  # This will fail because we don't mock it in the return
 
 
 def test_dir_patching(ocx, api_data):
