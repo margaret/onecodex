@@ -5,7 +5,14 @@ import pandas as pd
 import onecodex
 from onecodex import Api
 from onecodex.exceptions import MethodNotSupported
+
 import pytest
+import responses
+
+try:
+    from urllib.parse import unquote_plus  # Py3
+except ImportError:
+    from urllib import unquote_plus
 
 
 def test_api_creation(api_data):
@@ -83,3 +90,56 @@ def test_classification_methods(ocx, api_data):
     assert isinstance(classification, onecodex.models.analysis.Classifications)
     t = classification.table()
     assert isinstance(t, pd.DataFrame)
+
+
+# Sorting and where clauses
+@pytest.mark.parametrize('where_kwargs,queries', [
+    ({'public': True},
+        ['where={"public": true}']),
+    ({'public': False},
+        ['where={"public": false}']),
+    ({'filename': 'SRR1234.fastq.gz'},
+        ['where={"filename": "SRR1234.fastq.gz"}']),
+    ({'filename': 'SRR1234.fastq.gz', 'sort': 'public'},
+        ['where={"filename": "SRR1234.fastq.gz"}']),
+    ({'public': False, 'filename': 'tmp.fa'},
+        ['"filename": "tmp.fa"', '"public": false']),
+])
+def test_where_clauses(ocx, api_data, where_kwargs, queries):
+    ocx.Samples.where(**where_kwargs)
+    urls = []
+    for c in responses.calls:
+        url = unquote_plus(c.request.url)
+        urls.append(url)
+        for query in queries:
+            assert query in url
+
+
+def test_where_clauses_with_tags(ocx, api_data):
+    tag = ocx.Tags.get('5c1e9e41043e4435')
+    sample = ocx.Samples.get('761bc54b97f64980')
+    samples = ocx.Samples.where(tags=[tag])
+    assert sample in samples
+
+    query = '{"tags": {"$containsall": [{"$ref": "/api/v1/tags/5c1e9e41043e4435"}]}}'
+    query_in_urls = []
+    for c in responses.calls:
+        url = unquote_plus(c.request.url)
+        query_in_urls.append(query in url)
+
+    assert any(query_in_urls)
+
+
+def test_where_primary_analysis(ocx, api_data):
+    analysis = ocx.Analyses.get('935c2a3611944e39')
+    sample = ocx.Samples.get('761bc54b97f64980')
+    samples = ocx.Samples.where(primary_analysis=analysis)
+    assert sample in samples
+
+    query = '{"primary_analysis": {"$ref": "/api/v1/analyses/935c2a3611944e39"}'
+    query_in_urls = []
+    for c in responses.calls:
+        url = unquote_plus(c.request.url)
+        query_in_urls.append(query in url)
+
+    assert any(query_in_urls)

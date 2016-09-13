@@ -12,7 +12,7 @@ def coerce_search_value(search_value, field_name, base_class):
     if field_name == '$uri':
         return as_uri(field_name, base_class)
     elif isinstance(search_value, OneCodexBase):
-        return {'$ref': as_uri(search_value.id, search_value.__class__)}
+        return {'$ref': search_value._resource._uri}
     return search_value
 
 
