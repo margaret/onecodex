@@ -32,6 +32,9 @@ class OneCodexBase(object):
     def __repr__(self):
         return '<{} {}>'.format(self.__class__.__name__, self.id)
 
+    def _repr_html_(self):
+        return self._resource._repr_html_()
+
     def __dir__(self):
         # this only gets called on instances, so we're okay to add all the properties because
         # this won't appear when you call, e.g. dir(ocx.Samples)
