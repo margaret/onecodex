@@ -72,7 +72,7 @@ class TestExtendedApi(unittest.TestCase):
         classification = self.api.Classifications.get(self.uuid_one)
         self.assertTrue(hasattr(classification, "table"))
         self.assertTrue(hasattr(classification.table, '__call__'))
-        table = classification.abundances_df()
+        table = classification.abundances()
 
         for index_col in ['readcount', 'name', 'rank', 'tax_id']:
             self.assertTrue(index_col in table.columns.values)
@@ -83,7 +83,7 @@ class TestExtendedApi(unittest.TestCase):
 
         # make sure we can query with ids
         test_ids = [1214158, 1357, 1397276, 1288394]
-        subset_table = classification.abundances_df(ids=test_ids)
+        subset_table = classification.abundances(ids=test_ids)
         self.assertEqual(len(subset_table.index), len(test_ids))
         self.assertEqual(test_ids, list(subset_table['tax_id']))
 
@@ -107,8 +107,8 @@ class TestExtendedApi(unittest.TestCase):
         self.assertEqual(otu['shape'][1], 2)  # should be two cols
         rows_ids = [int(row['id']) for row in otu['rows']]
 
-        one_abundances = classification_one.abundances_df(rows_ids)
-        two_abundances = classification_two.abundances_df(rows_ids)
+        one_abundances = classification_one.abundances(rows_ids)
+        two_abundances = classification_two.abundances(rows_ids)
 
         row_id = 0
         for taxid in rows_ids:

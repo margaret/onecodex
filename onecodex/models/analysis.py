@@ -20,8 +20,19 @@ class Classifications(Analyses):
     @staticmethod
     def to_otu(classifications):
         """
-        Converts a list of classifications int1o a dictionary resembling
-            an OTU table.
+        Converts a list of classifications into a dictionary resembling
+        an OTU table.
+
+        Parameters
+        ----------
+        classifications : list of Classifications
+            List of Classifications, i.e., ocx.Classifications.where(job=job).
+            If 1 Classification is passed, it will be coerced into a list.
+
+        Returns
+        -------
+        otu_table : OrderedDcit
+            A BIOM OTU table, returned as a Python OrderedDict (can be dumped to JSON)
         """
         otu_format = 'Biological Observation Matrix 0.9.1-dev'
         otu_url = 'http://biom-format.org/documentation/format_versions/biom-1.0.html'  # noqa
@@ -37,6 +48,9 @@ class Classifications(Analyses):
                            'matrix_element_type': 'int'})
 
         rows = defaultdict(dict)
+        if not isinstance(classifications, list):
+            classifications = [classifications]
+
         for classification in classifications:
             col_id = len(otu['columns'])  # 0 index
             columns_entry = {'id': str(classification.id)}
@@ -66,9 +80,18 @@ class Classifications(Analyses):
 
     def table(self, as_dataframe=True):
         """
-        Return the complete results table for the classification.
-        Note that self._table starts as undefined
-        and only will be set once as needed
+        Returns the complete results table for the classification.
+
+        Parameters
+        ----------
+        as_dataframe : bool, optional
+            Return the results as a Pandas DataFrame (default=True).
+
+        Returns
+        -------
+        table : DataFrame or dict
+            A Pandas DataFrame of the classification results if `as_dataframe=True`. Otherwise,
+            returns a dict representing the raw JSON response from the API.
         """
         if not as_dataframe:
             return self._resource.table()['table']
@@ -78,11 +101,13 @@ class Classifications(Analyses):
                 self._table = pd.DataFrame(self._resource.table()['table'])
             return self._table
 
-    def abundances_df(self, ids=None):
+    def abundances(self, ids=None):
         """
         Query the results table to get abundance data for all or some tax ids
         """
-
+        # TODO: Consider removing this method... since it's kind of trivial
+        #       May want to replace with something that actually gets genome-size adjusted
+        #       abundances from the results table
         if ids is None:
             # get the data frame
             return self.table()
