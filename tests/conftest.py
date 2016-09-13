@@ -128,18 +128,37 @@ for filename in os.listdir('tests/api_data'):
         continue
 
     resource = json.load(open(os.path.join('tests/api_data', filename)))
+    if filename.startswith('schema'):
+        continue  # Parse separately below
+
     resource_name = filename.replace('.json', '')
-    print "RESOURCE NAME ", resource_name
     resource_uri = "GET::api/v1/{}".format(resource_name)
     API_DATA[resource_uri] = resource
-    if resource_name == 'schema':
-        continue
 
     # Then iterate through all instances
     if isinstance(resource, list):
         for instance in resource:
             instance_uri = "GET::{}".format(instance['$uri'].lstrip('/'))
             API_DATA[instance_uri] = instance
+
+
+SCHEMA_ROUTES = {}
+
+for filename in os.listdir('tests/api_data'):
+    if not filename.startswith('schema'):
+        continue
+
+    resource = json.load(open(os.path.join('tests/api_data', filename)))
+    if filename == 'schema.json':
+        resource_uri = 'GET::api/v1/schema'
+    else:
+        resource_name = filename.replace('.json', '').split('_')[1]
+        resource_uri = 'GET::api/v1/{}/schema'.format(resource_name)
+
+    SCHEMA_ROUTES[resource_uri] = resource
+
+
+API_DATA.update(SCHEMA_ROUTES)
 
 
 @pytest.fixture(scope='function')
@@ -154,7 +173,6 @@ def upload_mocks():
         return (201, {'location': 'on-aws'}, {})
 
     json_data = {
-        "GET::api/v1/schema": json.loads(rs('api_data/schema.json')),
         'GET::api/v1/samples/presign_upload': {
             'callback_url': '/api/confirm_upload',
             'signing_url': '/s3_sign',
@@ -180,6 +198,7 @@ def upload_mocks():
         },
         'POST::api/import_file_from_s3': '',
     }
+    json_data.update(SCHEMA_ROUTES)
     with mock_requests(json_data):
         yield
 
@@ -189,10 +208,7 @@ def upload_mocks():
 def ocx():
     """Instantiated API client
     """
-    schema_mock = {
-        "GET::api/v1/schema": json.loads(rs('api_data/schema.json'))
-    }
-    with mock_requests(schema_mock):
+    with mock_requests(SCHEMA_ROUTES):
         ocx = Api(api_key='1eab4217d30d42849dbde0cd1bb94e39',
                   base_url='http://localhost:3000', cache_schema=False)
         return ocx

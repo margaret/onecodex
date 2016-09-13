@@ -12,7 +12,7 @@ def fetch(resource):
     return requests.get(base_url + resource, auth=auth).json()
 
 
-schema = fetch('/api/v1/schema?expand=all')
+schema = fetch('/api/v1/schema')
 with open('schema.json', mode='w') as f:
     f.write(json.dumps(schema))
 

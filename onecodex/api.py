@@ -28,7 +28,7 @@ class Api(object):
     """
 
     def __init__(self, extensions=True, api_key=None,
-                 bearer_token=None, cache_schema=True,
+                 bearer_token=None, cache_schema=False,
                  base_url="http://app.onecodex.com",
                  schema_path="/api/v1/schema"):
 
@@ -113,13 +113,19 @@ class ExtendedPotionClient(PotionClient):
 
         if raw_schema is None:
             # Get the schema if it we didn't have it locally
-            raw_schema = self.session.get(self._schema_url, params={
-                'expand': 'all',
-            }).text
+            # raw_schema = self.session.get(self._schema_url, params={
+            #     'expand': 'all',
+            # }).text
 
-        schema = json.loads(raw_schema, cls=PotionJSONSchemaDecoder,
-                            referrer=self._schema_url,
-                            client=self)
+            schema = self.session \
+                         .get(self._schema_url) \
+                         .json(cls=PotionJSONSchemaDecoder,
+                               referrer=self._schema_url,
+                               client=self)
+        else:
+            schema = json.loads(raw_schema, cls=PotionJSONSchemaDecoder,
+                                referrer=self._schema_url,
+                                client=self)
 
         if cache_schema:
             creds['schema_saved_at'] = datetime.datetime.strftime(datetime.datetime.now(),
