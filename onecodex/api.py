@@ -5,14 +5,11 @@ author: @mbiokyle29
 One Codex Api + potion_client subclasses/extensions
 """
 from __future__ import print_function
-import datetime
 import json
 import logging
 import os
 
 from potion_client import Client as PotionClient
-from potion_client.converter import PotionJSONSchemaDecoder
-from potion_client.utils import upper_camel_case
 from requests.auth import HTTPBasicAuth
 
 from onecodex.lib.auth import BearerTokenAuth
@@ -57,10 +54,13 @@ class Api(object):
         elif api_key:
             self._req_args['auth'] = HTTPBasicAuth(api_key, '')
 
-        # create client instance
-        self._client = ExtendedPotionClient(self._base_url, schema_path=self._schema_path,
-                                            fetch_schema=False, **self._req_args)
-        self._client._fetch_schema(cache_schema=cache_schema)
+        # Create client instance
+        # FIXME: Implement an ExtendedPotionClient (see older dev branch)
+        #        that properly caches the schema and loads it as appropriate.
+        #        Right now, `cache_schema` does not *do anything*
+        self._client = PotionClient(self._base_url, schema_path=self._schema_path,
+                                    fetch_schema=False, **self._req_args)
+        self._client._fetch_schema()
         self._session = self._client.session
         self._copy_resources()
 
@@ -79,69 +79,3 @@ class Api(object):
             oc_cls._api = self
             oc_cls._resource = potion_resource
             setattr(self, oc_cls.__name__, oc_cls)
-
-
-class ExtendedPotionClient(PotionClient):
-    """
-    An extention of the PotionClient that caches schema
-    """
-    DATE_FORMAT = "%Y-%m-%d %H:%M"
-    SCHEMA_SAVE_DURATION = 1  # day
-
-    def _fetch_schema(self, extensions=[], cache_schema=True, creds_file=None):
-        log.debug('Fetching API JSON schema.')
-        creds_fp = os.path.expanduser('~/.onecodex') if creds_file is None else creds_file
-
-        if os.path.exists(creds_fp):
-            creds = json.load(open(creds_fp, 'r'))
-        else:
-            creds = {}
-
-        raw_schema = None
-        if cache_schema:
-            # Determine if we need to update
-            schema_update_needed = True
-            last_update = creds.get('schema_saved_at')
-            if last_update is not None:
-                last_update = datetime.datetime.strptime(last_update, self.DATE_FORMAT)
-                time_diff = datetime.datetime.now() - last_update
-                schema_update_needed = time_diff.days > self.SCHEMA_SAVE_DURATION
-
-            if not schema_update_needed:
-                # get the schema from the credentials file (as a string)
-                raw_schema = creds.get('schema')
-
-        if raw_schema is None:
-            # Get the schema if it we didn't have it locally
-            # raw_schema = self.session.get(self._schema_url, params={
-            #     'expand': 'all',
-            # }).text
-
-            schema = self.session \
-                         .get(self._schema_url) \
-                         .json(cls=PotionJSONSchemaDecoder,
-                               referrer=self._schema_url,
-                               client=self)
-        else:
-            schema = json.loads(raw_schema, cls=PotionJSONSchemaDecoder,
-                                referrer=self._schema_url,
-                                client=self)
-
-        if cache_schema:
-            creds['schema_saved_at'] = datetime.datetime.strftime(datetime.datetime.now(),
-                                                                  self.DATE_FORMAT)
-            creds['schema'] = raw_schema
-        else:
-            if 'schema_saved_at' in creds:
-                del creds['schema_saved_at']
-            if 'schema' in creds:
-                del creds['schema']
-
-        # always resave the creds (to make sure we're removing schema if we need to be or
-        # saving if we need to do that instead)
-        if os.path.exists(creds_fp) and len(creds) > 0:
-            json.dump(creds, open(creds_fp, mode='w'))
-
-        for name, resource_schema in schema['properties'].items():
-            class_name = upper_camel_case(name)
-            setattr(self, class_name, self.resource_factory(name, resource_schema))
