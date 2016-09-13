@@ -293,11 +293,11 @@ class OneCodexBase(object):
 
 from onecodex.models.analysis import Analyses, Classifications, Alignments, Markerpanels  # noqa
 from onecodex.models.misc import Jobs, Projects, Tags, Users  # noqa
-from onecodex.models.sample import Samples, SampleMetadata  # noqa
+from onecodex.models.sample import Samples, Metadata  # noqa
 
 
 __all__ = ['Samples', 'Classifications', 'Alignments', 'Markerpanels', 'Jobs', 'Projects', 'Tags',
-           'Users']
+           'Users', 'Metadata']
 
 
 # go through all the models and generate a lookup table (to use in binding in the API and elsewhere)

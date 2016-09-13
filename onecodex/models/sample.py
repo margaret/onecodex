@@ -21,7 +21,7 @@ class Samples(OneCodexBase):
         metadata_samples = []
         if instances_route in ['instances']:
 
-            md_schema = next(l for l in SampleMetadata._resource._schema['links']
+            md_schema = next(l for l in Metadata._resource._schema['links']
                              if l['rel'] == instances_route)
 
             md_where_schema = md_schema['schema']['properties']['where']['properties']
@@ -50,7 +50,7 @@ class Samples(OneCodexBase):
             # keyword_filters['sort'] = passthrough_sort
 
             if len(md_search_keywords) > 0:
-                metadata_samples = [md.sample for md in SampleMetadata.where(**md_search_keywords)]
+                metadata_samples = [md.sample for md in Metadata.where(**md_search_keywords)]
 
         samples = []
         if len(metadata_samples) == 0:
@@ -128,5 +128,5 @@ class Samples(OneCodexBase):
                                         'be in a notebook environment.')
 
 
-class SampleMetadata(OneCodexBase):
+class Metadata(OneCodexBase):
     _resource_path = '/api/v1/metadata'

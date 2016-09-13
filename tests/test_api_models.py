@@ -77,7 +77,7 @@ def test_sample_saving(ocx, api_data):
 def test_metadata_saving(ocx, api_data):
     sample = ocx.Samples.get('761bc54b97f64980')
     metadata1 = sample.metadata
-    metadata2 = ocx.SampleMetadata.get('4fe05e748b5a4f0e')
+    metadata2 = ocx.Metadata.get('4fe05e748b5a4f0e')
     assert metadata1 == metadata2
     metadata1.date_collected = datetime.datetime.now()
     # metadata1.save()  # Fails.... :/
