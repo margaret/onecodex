@@ -121,6 +121,8 @@ API_DATA = {
             "tax_id": 59201
         }]
     },
+    "PATCH::api/v1/samples/761bc54b97f64980": {},
+    "PATCH::api/v1/metadata/4fe05e748b5a4f0e": {}
 }
 
 for filename in os.listdir('tests/api_data'):

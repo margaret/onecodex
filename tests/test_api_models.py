@@ -66,6 +66,14 @@ def test_model_updates(ocx, api_data):
         analysis.created_at = datetime.datetime.utcnow()
 
 
+def test_sample_saving(ocx, api_data):
+    sample = ocx.Samples.get('761bc54b97f64980')
+    starred_state = sample.starred
+    sample.starred = not starred_state
+    sample.save()
+    assert sample.starred is not starred_state
+
+
 def test_metadata_saving(ocx, api_data):
     sample = ocx.Samples.get('761bc54b97f64980')
     metadata1 = sample.metadata
