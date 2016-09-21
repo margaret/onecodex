@@ -143,7 +143,6 @@ class ExtendedPotionClient(PotionClient):
                 serialized_schema[self._schema_url] = json.dumps(schema, cls=PotionJSONEncoder)
 
                 # serialize the object schemas
-                print(schema['properties'].keys())
                 for schema_ref in schema['properties'].values():
                     serialized_schema[schema_ref._uri] = json.dumps(schema_ref._properties,
                                                                     cls=PotionJSONEncoder)
@@ -157,8 +156,7 @@ class ExtendedPotionClient(PotionClient):
 
             # always resave the creds (to make sure we're removing schema if we need to be or
             # saving if we need to do that instead)
-            if len(creds) > 0:
-                json.dump(creds, open(creds_fp, mode='w'))
+            json.dump(creds, open(creds_fp, mode='w'))
 
         for name, resource_schema in schema['properties'].items():
             class_name = upper_camel_case(name)

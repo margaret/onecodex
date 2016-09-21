@@ -47,33 +47,35 @@ def _login(server, check_for_update=True, creds_file=None):
     else:
         fp = creds_file
 
-    # check if exists and is okay
+    # check if the creds file exists and has an api_key in it
+    creds = {}
     if os.path.exists(fp):
         try:
             with open(fp, mode='r') as f:
                 creds = json.load(f)
+                if 'api_key' in creds:
+                    click.echo('Credentials file already exists ({})'.format(collapse_user(fp)),
+                               err=True)
+                    return
         except ValueError:
             click.echo("Your ~/.onecodex credentials file appears to be corrupted."  # noqa
-                   "Please delete it and re-authorize.", err=True)
+                       "Please delete it and re-authorize.", err=True)
             sys.exit(1)
-        file = collapse_user(fp)
-        click.echo("Credentials file already exists ({})".format(file), err=True)
 
     # else make it
-    else:
-        api_key = login_uname_pwd(server)
+    api_key = login_uname_pwd(server)
 
-        if api_key is None:
-            click.echo("We could not verify your credentials. Either you mistyped your email "
-                       "or password, or your account does not currently have API access. "
-                       "Please contact help@onecodex.com if you continue to experience problems.")
-            sys.exit(1)
+    if api_key is None:
+        click.echo("We could not verify your credentials. Either you mistyped your email "
+                   "or password, or your account does not currently have API access. "
+                   "Please contact help@onecodex.com if you continue to experience problems.")
+        sys.exit(1)
 
-        now = datetime.datetime.now().strftime(DATE_FORMAT)
-        creds = {'api_key': api_key, 'saved_at': now, 'updated_at': None}
-        with open(fp, mode='w') as f:
-            json.dump(creds, f)
-        click.echo("Your ~/.onecodex credentials file successfully created.", err=True)
+    now = datetime.datetime.now().strftime(DATE_FORMAT)
+    creds.update({'api_key': api_key, 'saved_at': now, 'updated_at': None})
+    with open(fp, mode='w') as f:
+        json.dump(creds, f)
+    click.echo("Your ~/.onecodex credentials file successfully created.", err=True)
 
 
 def _logout(creds_file=None):
@@ -88,6 +90,7 @@ def _logout(creds_file=None):
         fp = creds_file
 
     if os.path.exists(fp):
+        # we might not want to do this if there's there are cached schema in it?
         os.remove(fp)
         click.echo("Successfully removed One Codex credentials.", err=True)
         sys.exit(0)
@@ -106,7 +109,7 @@ def _silent_login():
         try:
             with open(fp, mode='r') as f:
                 creds = json.load(f)
-                return creds["api_key"]
+                return creds.get('api_key')
         except ValueError:
             # TODO: NEED A LOGGER CONFIGURED FOR THIS FILE...
             log.error("Your ~/.onecodex credentials "
