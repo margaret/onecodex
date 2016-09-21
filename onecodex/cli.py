@@ -14,6 +14,7 @@ from onecodex.utils import (cli_resource_fetcher, download_file_helper,
                             warn_if_insecure_platform)
 from onecodex.api import Api
 from onecodex.auth import _login, _logout, _silent_login
+from onecodex.version import __version__
 
 # set the context for getting -h also
 CONTEXT_SETTINGS = dict(
@@ -38,7 +39,7 @@ log.addHandler(stream_handler)
               help=OPTION_HELP['no_pprint'])
 @click.option("--verbose", "-v", is_flag=True,
               help=OPTION_HELP['verbose'])
-@click.version_option()
+@click.version_option(version=__version__)
 @click.pass_context
 def onecodex(ctx, api_key, no_pprint, verbose):
     """One Codex v1 API command line interface"""

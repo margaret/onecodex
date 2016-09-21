@@ -15,11 +15,11 @@ class TestVanillaApi(unittest.TestCase):
 
     @responses.activate
     def setUp(self):
-        self.schema_url = "http://localhost:5000/api/v1/schema"
+        self.schema_url = "http://localhost:3000/api/v1/schema"
         self.schema_file = resource_string(__name__, 'data/schema.json').decode('utf-8')
         responses.add(responses.GET, self.schema_url,
                       json=json.loads(self.schema_file))
-        self.api = Api(base_url="http://localhost:5000", extensions=False,
+        self.api = Api(base_url="http://localhost:3000", extensions=False,
                        api_key='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
 
     def test_attrs_copied(self):
@@ -38,11 +38,11 @@ class TestExtendedApi(unittest.TestCase):
     @responses.activate
     def setUp(self):
 
-        self.schema_url = "http://localhost:5000/api/v1/schema"
+        self.schema_url = "http://localhost:3000/api/v1/schema"
         self.schema_file = resource_string(__name__, 'data/schema.json').decode('utf-8')
         responses.add(responses.GET, self.schema_url,
                       json=json.loads(self.schema_file))
-        self.api = Api(base_url="http://localhost:5000",
+        self.api = Api(base_url="http://localhost:3000",
                        api_key='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
 
         self.uuid_one = "4a668ac6daf74364"
@@ -54,11 +54,11 @@ class TestExtendedApi(unittest.TestCase):
         self.classification_two = resource_string(__name__, "data/api/{}.json".format(self.uuid_two)).decode('utf-8')  # noqa
         self.table_two = resource_string(__name__, "data/api/{}_table.json".format(self.uuid_two)).decode('utf-8')  # noqa
 
-        self.classification_one_url = "http://localhost:5000/api/v1/classifications/4a668ac6daf74364"
-        self.classification_one_table_url = "http://localhost:5000/api/v1/classifications/4a668ac6daf74364/table"
+        self.classification_one_url = "http://localhost:3000/api/v1/classifications/4a668ac6daf74364"
+        self.classification_one_table_url = "http://localhost:3000/api/v1/classifications/4a668ac6daf74364/table"
 
-        self.classification_two_url = "http://localhost:5000/api/v1/classifications/d61f459d077d4cd0"
-        self.classification_two_table_url = "http://localhost:5000/api/v1/classifications/d61f459d077d4cd0/table"
+        self.classification_two_url = "http://localhost:3000/api/v1/classifications/d61f459d077d4cd0"
+        self.classification_two_table_url = "http://localhost:3000/api/v1/classifications/d61f459d077d4cd0/table"
 
     @responses.activate
     def test_classification_abundance_data(self):
@@ -129,11 +129,11 @@ class TestQueryInterface(unittest.TestCase):
 
     @responses.activate
     def setUp(self):
-        self.schema_url = "http://localhost:5000/api/v1/schema"
+        self.schema_url = "http://localhost:3000/api/v1/schema"
         self.schema_file = resource_string(__name__, 'data/schema.json').decode('utf-8')
         responses.add(responses.GET, self.schema_url,
                       json=json.loads(self.schema_file))
-        self.api = Api(base_url="http://localhost:5000",
+        self.api = Api(base_url="http://localhost:3000",
                        api_key='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
 
         self.num_complete = 2
@@ -161,15 +161,15 @@ class TestQueryInterface(unittest.TestCase):
             __name__, 'data/api/incomplete_analysis_one.json').decode('utf-8')
 
         # URLS for responses
-        self.analysis_one_url = 'http://localhost:5000/api/v1/analyses/1'
-        self.analysis_two_url = 'http://localhost:5000/api/v1/analyses/2'
-        self.analysis_three_url = 'http://localhost:5000/api/v1/analyses/3'
-        self.complete_url = 'http://localhost:5000/api/v1/analyses?per_page=20&where=%7B%22complete%22%3A+true%7D&page=1'
-        self.complete_url_new = 'http://localhost:5000/api/v1/analyses?sort=%7B%7D&per_page=20&where=%7B%22complete%22%3A+true%7D&page=1'
-        self.incomplete_url = 'http://localhost:5000/api/v1/analyses?per_page=20&where=%7B%22complete%22%3A+false%7D&page=1'
-        self.incomplete_url_new = 'http://localhost:5000/api/v1/analyses?sort=%7B%7D&per_page=20&where=%7B%22complete%22%3A+false%7D&page=1'
-        self.sample_url = 'http://localhost:5000/api/v1/samples/d66e901ea9854f1f'
-        self.metadata_url = 'http://localhost:5000/api/v1/metadata/50fd2f0513d34372'
+        self.analysis_one_url = 'http://localhost:3000/api/v1/analyses/1'
+        self.analysis_two_url = 'http://localhost:3000/api/v1/analyses/2'
+        self.analysis_three_url = 'http://localhost:3000/api/v1/analyses/3'
+        self.complete_url = 'http://localhost:3000/api/v1/analyses?per_page=20&where=%7B%22complete%22%3A+true%7D&page=1'
+        self.complete_url_new = 'http://localhost:3000/api/v1/analyses?sort=%7B%7D&per_page=20&where=%7B%22complete%22%3A+true%7D&page=1'
+        self.incomplete_url = 'http://localhost:3000/api/v1/analyses?per_page=20&where=%7B%22complete%22%3A+false%7D&page=1'
+        self.incomplete_url_new = 'http://localhost:3000/api/v1/analyses?sort=%7B%7D&per_page=20&where=%7B%22complete%22%3A+false%7D&page=1'
+        self.sample_url = 'http://localhost:3000/api/v1/samples/d66e901ea9854f1f'
+        self.metadata_url = 'http://localhost:3000/api/v1/metadata/50fd2f0513d34372'
 
     @responses.activate
     def test_get(self):

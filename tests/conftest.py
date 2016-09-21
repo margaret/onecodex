@@ -1,3 +1,4 @@
+from __future__ import print_function
 from contextlib import contextmanager
 import json
 import os
@@ -41,7 +42,7 @@ def intercept(func, log=False, dump=None):
         responses.mock.start()
         data = json.dumps(json.loads(text), separators=(',', ':'))
         if log:
-            print('<-', resp.status_code, data)
+            print('<-', resp.status_code, data if log == 'all' else '*')
         if dump is not None:
             dump[request.method + ':' + request.url.split('/', 3)[-1]] = data
         return (200, headers, text)
