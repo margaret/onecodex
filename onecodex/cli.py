@@ -57,7 +57,7 @@ def onecodex(ctx, api_key, no_pprint, verbose):
         base_url = os.environ.get("ONE_CODEX_API_BASE")
         click.echo("ALL REQUESTS GOING THROUGH: %s" % base_url, err=True)
     else:
-        base_url = "https://app.onecodex.com/"
+        base_url = "https://app.onecodex.com"
 
     ctx.obj['BASE_URL'] = base_url
 

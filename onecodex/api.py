@@ -11,8 +11,7 @@ import logging
 import os
 
 from potion_client import Client as PotionClient
-from potion_client.converter import PotionJSONSchemaDecoder, PotionJSONEncoder
-from potion_client.resource import Reference
+from potion_client.converter import PotionJSONSchemaDecoder, PotionJSONDecoder, PotionJSONEncoder
 from potion_client.utils import upper_camel_case
 from requests.auth import HTTPBasicAuth
 
@@ -59,9 +58,6 @@ class Api(object):
             self._req_args['auth'] = HTTPBasicAuth(api_key, '')
 
         # Create client instance
-        # FIXME: Implement an ExtendedPotionClient (see older dev branch)
-        #        that properly caches the schema and loads it as appropriate.
-        #        Right now, `cache_schema` does not *do anything*
         self._client = ExtendedPotionClient(self._base_url, schema_path=self._schema_path,
                                             fetch_schema=False, **self._req_args)
         self._client._fetch_schema(cache_schema=cache_schema)
@@ -92,8 +88,13 @@ class ExtendedPotionClient(PotionClient):
     DATE_FORMAT = "%Y-%m-%d %H:%M"
     SCHEMA_SAVE_DURATION = 1  # day
 
+    def fetch(self, uri, cls=PotionJSONDecoder, **kwargs):
+        if uri in self._cached_schema:
+            return self._cached_schema[uri]
+        return super(ExtendedPotionClient, self).fetch(uri, cls=cls, **kwargs)
+
     def _fetch_schema(self, extensions=[], cache_schema=False, creds_file=None):
-        log.debug('Fetching API JSON schema.')
+        self._cached_schema = {}
         creds_fp = os.path.expanduser('~/.onecodex') if creds_file is None else creds_file
 
         if os.path.exists(creds_fp):
@@ -101,6 +102,7 @@ class ExtendedPotionClient(PotionClient):
         else:
             creds = {}
 
+        schema = None
         serialized_schema = None
         if cache_schema:
             # Determine if we need to update
@@ -116,20 +118,20 @@ class ExtendedPotionClient(PotionClient):
                 serialized_schema = creds.get('schema')
 
         if serialized_schema is not None:
-            # TODO: if _schema_url isn't in the json, maybe we should fall back to server retrieval?
-            base_schema = serialized_schema.pop(self._schema_url)
-            schema = json.loads(base_schema, cls=PotionJSONSchemaDecoder, referrer=self._schema_url,
-                                client=self)
+            # Catch schema caching issues and fall back to remote URL
+            try:
+                base_schema = serialized_schema.pop(self._schema_url)
+                schema = json.loads(base_schema, cls=PotionJSONSchemaDecoder,
+                                    referrer=self._schema_url, client=self)
 
-            self.__cached_instances = []
-            for route, route_schema in serialized_schema.items():
-                object_schema = json.loads(route_schema, cls=PotionJSONSchemaDecoder,
-                                           referrer=self._schema_url, client=self)
-                ref = Reference(route, self)
-                ref._properties = object_schema
-                self.__cached_instances.append(ref)
-                self._instances[route] = ref
-        else:
+                for route, route_schema in serialized_schema.items():
+                    object_schema = json.loads(route_schema, cls=PotionJSONSchemaDecoder,
+                                               referrer=self._schema_url, client=self)
+                    self._cached_schema[route] = object_schema
+            except KeyError:  # Caches issue with schema_url not existing
+                pass
+
+        if schema is None:
             # if the schema wasn't cached or if it was expired, get it anew
             schema = self.session.get(self._schema_url).json(cls=PotionJSONSchemaDecoder,
                                                              referrer=self._schema_url,
