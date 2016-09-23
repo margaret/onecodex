@@ -38,6 +38,20 @@ def test_sample_get(ocx, api_data):
     assert 'isolate' in [t.name for t in tags]
 
 
+def test_dir_method(ocx, api_data):
+    sample = ocx.Samples.get('761bc54b97f64980')
+
+    instance_names = dir(sample)
+    assert "where" not in instance_names   # we mask @classmethod's
+    assert "created_at" in instance_names  # property on _resource
+    assert "save" in instance_names        # function in py3, method in py2
+
+    class_names = dir(ocx.Samples)
+    assert "where" in class_names
+    assert "created_at" not in class_names
+    assert "save" in class_names  # instance methods are available off class
+
+
 def test_get_failure_instructions(ocx):
     with pytest.raises(TypeError):
         ocx.Samples('direct_id')

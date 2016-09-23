@@ -45,11 +45,12 @@ class OneCodexBase(object):
         # this might be a little too clever, but we mask out class methods/fxns from the instances
         base_object_names = []
         for name, obj in inspect.getmembers(self.__class__):
-            if inspect.ismethod(obj) or inspect.isfunction(obj):
-                if obj.__self__ is not self.__class__:
-                    base_object_names.append(name)
+            if inspect.isfunction(obj):  # .save() and .delete() are functions in Py3
+                base_object_names.append(name)
+            if inspect.ismethod(obj) and obj.__self__ is not self.__class__:
+                base_object_names.append(name)
 
-        return base_object_names + fields
+        return fields + base_object_names
 
     def __getattr__(self, key):
         if hasattr(self, '_resource') and hasattr(self.__class__, '_resource'):
