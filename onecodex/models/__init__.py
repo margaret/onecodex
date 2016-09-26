@@ -27,7 +27,12 @@ class OneCodexBase(object):
                 raise TypeError('Use the .get() method to fetch an individual resource.')
             self._resource = _resource
         elif hasattr(self.__class__, '_resource'):
-            self._resource = self.__class__._resource()
+            for key, val in kwargs.items():
+                # This modifies kwargs in place to be the underlying
+                # Potion-Client resource
+                if isinstance(self, OneCodexBase):
+                    kwargs[key] = val._resource
+            self._resource = self.__class__._resource(**kwargs)
 
     def __repr__(self):
         return '<{} {}>'.format(self.__class__.__name__, self.id)
@@ -85,6 +90,9 @@ class OneCodexBase(object):
             return
         elif key == 'id':
             raise AttributeError('can\'t set attribute')
+        elif isinstance(value, OneCodexBase):
+            self._resource[key] = value._resource
+            return
         elif hasattr(self, '_resource') and hasattr(self.__class__, '_resource'):
             schema = self.__class__._resource._schema['properties'].get(key)
 
