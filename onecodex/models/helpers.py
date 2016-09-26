@@ -70,3 +70,15 @@ def generate_potion_keyword_where(keyword_filters, where_schema, base_class):
         else:
             where[keyword] = coerce_search_value(search_value, keyword, base_class)
     return where
+
+
+def truncate_string(s, length=24):
+    if len(s) < length - 3:
+        return s
+    else:
+        s = s[0:(length - 3)]
+        if s[-1] == '.':
+            s = s + '..'
+        else:
+            s = s + '...'
+        return s

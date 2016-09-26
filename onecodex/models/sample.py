@@ -4,11 +4,16 @@ from six import string_types
 
 from onecodex.exceptions import OneCodexException
 from onecodex.models import OneCodexBase
+from onecodex.models.helpers import truncate_string
 from onecodex.lib.old_upload import old_upload  # upload_file
 
 
 class Samples(OneCodexBase):
     _resource_path = '/api/v1/samples'
+
+    def __repr__(self):
+        return '<{} {}: "{}">'.format(self.__class__.__name__, self.id,
+                                      truncate_string(self.filename, 24))
 
     @classmethod
     def where(cls, *filters, **keyword_filters):

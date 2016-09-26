@@ -26,7 +26,7 @@ def test_sample_get(ocx, api_data):
     sample = ocx.Samples.get('761bc54b97f64980')
     assert sample.size == 302369471
     assert sample.filename == 'SRR2352223.fastq.gz'
-    assert sample.__repr__() == "<Samples 761bc54b97f64980>"
+    assert sample.__repr__() == '<Samples 761bc54b97f64980: "SRR2352223.fastq.gz">'
     assert isinstance(sample.created_at, datetime.datetime)
 
     analysis = sample.primary_analysis
