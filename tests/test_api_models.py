@@ -119,20 +119,26 @@ def test_classification_methods(ocx, api_data):
 
 
 # Sorting and where clauses
-@pytest.mark.parametrize('where_kwargs,queries', [
-    ({'public': True},
+@pytest.mark.parametrize('where_args,where_kwargs,queries', [
+    ([], {'public': True},
         ['where={"public": true}']),
-    ({'public': False},
+    ([], {'public': False},
         ['where={"public": false}']),
-    ({'filename': 'SRR1234.fastq.gz'},
+    ([], {'filename': 'SRR1234.fastq.gz'},
         ['where={"filename": "SRR1234.fastq.gz"}']),
-    ({'filename': 'SRR1234.fastq.gz', 'sort': 'public'},
+    ([], {'filename': 'SRR1234.fastq.gz', 'sort': 'public'},
         ['where={"filename": "SRR1234.fastq.gz"}']),
-    ({'public': False, 'filename': 'tmp.fa'},
+    ([], {'public': False, 'filename': 'tmp.fa'},
         ['"filename": "tmp.fa"', '"public": false']),
+    ([{'public': False, 'filename': 'tmp.fa'}], {},
+        ['"filename": "tmp.fa"', '"public": false']),
+    (['761bc54b97f64980'], {},
+        ['"$uri": {"$in": ["/api/v1/samples/761bc54b97f64980"']),
+    (['/api/v1/samples/761bc54b97f64980'], {},
+        ['"$uri": {"$in": ["/api/v1/samples/761bc54b97f64980"']),
 ])
-def test_where_clauses(ocx, api_data, where_kwargs, queries):
-    ocx.Samples.where(**where_kwargs)
+def test_where_clauses(ocx, api_data, where_args, where_kwargs, queries):
+    ocx.Samples.where(*where_args, **where_kwargs)
     urls = []
     for c in responses.calls:
         url = unquote_plus(c.request.url)

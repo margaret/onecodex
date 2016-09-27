@@ -133,6 +133,13 @@ class OneCodexBase(object):
         return self._resource._uri == other._resource._uri
 
     @classmethod
+    def _convert_id_to_uri(cls, uuid):
+        base_uri = cls._resource._schema._uri.replace('/schema#', '')
+        if not uuid.startswith(base_uri):
+            uuid = '{}/{}'.format(base_uri, uuid)
+        return uuid
+
+    @classmethod
     def _has_schema_method(cls, method_name):
         # potion-client is too stupid to check the schema before allowing certain operations
         # so we manually check it before allowing some instance methods
@@ -191,9 +198,11 @@ class OneCodexBase(object):
 
         # we're filtering by fancy objects (like SQLAlchemy's filter)
         if len(filters) > 0:
-            if all(isinstance(f, six.string_types) for f in filters):
+            if len(filters) == 1 and isinstance(filters[0], dict):
+                where = filters[0]
+            elif all(isinstance(f, six.string_types) for f in filters):
                 # if it's a list of strings, treat it as an multiple "get" request
-                where = {'$uri': {'$in': filters}}
+                where = {'$uri': {'$in': [cls._convert_id_to_uri(f) for f in filters]}}
             else:
                 # we're doing some more advanced filtering
                 raise NotImplementedError('Advanced filtering hasn\'t been implemented yet')
