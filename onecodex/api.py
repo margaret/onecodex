@@ -75,10 +75,13 @@ class Api(object):
             # set the name param, the keys now have / in them
             potion_resource = self._client._resources[resource]
 
-            oc_cls = _model_lookup[resource]
-            oc_cls._api = self
-            oc_cls._resource = potion_resource
-            setattr(self, oc_cls.__name__, oc_cls)
+            try:
+                oc_cls = _model_lookup[resource]
+                oc_cls._api = self
+                oc_cls._resource = potion_resource
+                setattr(self, oc_cls.__name__, oc_cls)
+            except KeyError:  # Ignore resources we don't explicitly model
+                pass
 
 
 class ExtendedPotionClient(PotionClient):
