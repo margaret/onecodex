@@ -32,7 +32,7 @@ class Samples(OneCodexBase):
 
             md_where_schema = md_schema['schema']['properties']['where']['properties']
             md_search_keywords = {}
-            for keyword in keyword_filters.keys():
+            for keyword in list(keyword_filters):
                 # skip out on $uri to prevent duplicate field searches and the others to
                 # simplify the checking below
                 if keyword in ['$uri', 'sort', '_instances']:
