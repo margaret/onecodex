@@ -74,9 +74,8 @@ class Samples(OneCodexBase):
 
         return samples[:limit]
 
-    # TODO: Consider renaming
     @classmethod
-    def where_public(cls, *filters, **keyword_filters):
+    def search_public(cls, *filters, **keyword_filters):
         keyword_filters['_instances'] = 'instances_public'
         keyword_filters['limit'] = 100
         return cls.where(filters, keyword_filters)
