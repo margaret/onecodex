@@ -1,3 +1,4 @@
+import os
 import requests
 from requests.exceptions import HTTPError
 from six import string_types
@@ -113,24 +114,32 @@ class Samples(OneCodexBase):
         # FIXME: pass the auth into this so we can authenticate the callback?
         # FIXME: return a Sample object?
 
-    def download(self, filename):
+    def download(self, path=None):
         """
-        Downloads the original "read" file from the One Codex server.
+        Downloads the original reads file (FASTA/FASTQ) from One Codex.
 
-        This may only work from within notebook sessions and this file is not guaranteed to exist
-        for all plan types.
+        Note that this may only work from within a notebook session and the file
+        is not guaranteed to exist for all One Codex plan types.
+
+        Parameters
+        ----------
+        path : string, optional
+            Full path to save the file to. If omitted, defaults to the original filename
+            in the current working directory.
         """
+        if path is None:
+            path = os.path.join(os.getcwd(), self.filename)
         try:
             url_data = self._resource.download_uri()
             resp = requests.get(url_data['download_uri'], stream=True)
             # TODO: use tqdm or ProgressBar here to display progress?
-            with open(filename, 'wb') as f_out:
+            with open(path, 'wb') as f_out:
                 for data in resp.iter_content():
                     f_out.write(data)
         except HTTPError as exc:
             if exc.response.status_code == 402:
-                raise OneCodexException('Samples must either be enabled for download or you must '
-                                        'be in a notebook environment.')
+                raise OneCodexException('You must either have a premium platform account or be in '
+                                        'a notebook environment to download samples.')
 
 
 class Metadata(OneCodexBase):
