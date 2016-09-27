@@ -129,7 +129,7 @@ class Samples(OneCodexBase):
             resp = requests.get(url_data['download_uri'], stream=True)
             # TODO: use tqdm or ProgressBar here to display progress?
             with open(path, 'wb') as f_out:
-                for data in resp.iter_content():
+                for data in resp.iter_content(chunk_size=1024):
                     f_out.write(data)
         except HTTPError as exc:
             if exc.response.status_code == 402:
