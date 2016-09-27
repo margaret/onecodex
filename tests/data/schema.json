@@ -2622,9 +2622,9 @@
                     }
                 },
                 {
-                    "href": "/api/v1/classifications/{id}/table",
+                    "href": "/api/v1/classifications/{id}/results",
                     "method": "GET",
-                    "rel": "table",
+                    "rel": "results",
                     "targetSchema": {
                         "additionalProperties": false,
                         "properties": {
@@ -4213,7 +4213,7 @@
                 {
                     "href": "/api/v1/markerpanels/{id}/results",
                     "method": "GET",
-                    "rel": "panel_results",
+                    "rel": "results",
                     "targetSchema": {
                         "properties": {
                             "panel_name": {

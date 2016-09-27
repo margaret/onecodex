@@ -6,6 +6,34 @@ from onecodex.models import OneCodexBase
 
 class Analyses(OneCodexBase):
     _resource_path = '/api/v1/analyses'
+    _cached_result = None
+
+    def results(self, json=True):
+        """
+        Fetch the results for an Analyses resource.
+
+        Parameters
+        ----------
+        json : bool, optional
+            Return a JSON result (raw API result)? Default True.
+
+        Returns
+        -------
+        Return type varies by Analyses resource sub-type. See, e.g.,
+        Classifications or Markerpanels for documentation.
+        """
+        if json is True:
+            return self._results()
+        else:
+            raise NotImplementedError('No non-JSON result format implemented.')
+
+    def _results(self):
+        try:
+            if not self._cached_result:
+                self._cached_result = self._resource.results()
+            return self._cached_result
+        except AttributeError:
+            raise NotImplementedError('.results() not implemented for this Analyses resource.')
 
 
 class Alignments(Analyses):
@@ -14,8 +42,7 @@ class Alignments(Analyses):
 
 class Classifications(Analyses):
     _resource_path = '/api/v1/classifications'
-
-    _table = None
+    _cached_table = None
 
     @staticmethod
     def to_otu(classifications):
@@ -78,28 +105,42 @@ class Classifications(Analyses):
 
         return otu
 
-    def table(self, as_dataframe=True):
+    def results(self, json=True):
         """
         Returns the complete results table for the classification.
 
         Parameters
         ----------
-        as_dataframe : bool, optional
-            Return the results as a Pandas DataFrame (default=True).
+        json : bool, optional
+            Return result as JSON? Default True.
 
         Returns
         -------
-        table : DataFrame or dict
-            A Pandas DataFrame of the classification results if `as_dataframe=True`. Otherwise,
-            returns a dict representing the raw JSON response from the API.
+        table : dict | DataFrame
+            Return a JSON object with the classification results or a Pandas DataFrame
+            if json=False.
         """
-        if not as_dataframe:
-            return self._resource.table()['table']
+        if json is True:
+            return self._results()
         else:
-            import pandas as pd
-            if self._table is None:
-                self._table = pd.DataFrame(self._resource.table()['table'])
-            return self._table
+            return self._table()
+
+    def _table(self):
+        import pandas as pd
+        if self._cached_table is None:
+            self._cached_table = pd.DataFrame(self._results()['table'])
+        return self._cached_table
+
+    def table(self):
+        """
+        Returns the complete results table for the classification.
+
+        Returns
+        -------
+        table : DataFrame
+            A Pandas DataFrame of the classification results.
+        """
+        return self.results(json=False)
 
     def abundances(self, ids=None):
         """
@@ -119,3 +160,9 @@ class Classifications(Analyses):
 
 class Markerpanels(Analyses):
     _resource_path = '/api/v1/markerpanels'
+
+    def results(self, json=True):
+        if json is True:
+            return self._results()
+        else:
+            raise NotImplementedError('Markerpanel results only available as JSON at this time.')

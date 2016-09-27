@@ -55,10 +55,10 @@ class TestExtendedApi(unittest.TestCase):
         self.table_two = resource_string(__name__, "data/api/{}_table.json".format(self.uuid_two)).decode('utf-8')  # noqa
 
         self.classification_one_url = "http://localhost:3000/api/v1/classifications/4a668ac6daf74364"
-        self.classification_one_table_url = "http://localhost:3000/api/v1/classifications/4a668ac6daf74364/table"
+        self.classification_one_table_url = "http://localhost:3000/api/v1/classifications/4a668ac6daf74364/results"
 
         self.classification_two_url = "http://localhost:3000/api/v1/classifications/d61f459d077d4cd0"
-        self.classification_two_table_url = "http://localhost:3000/api/v1/classifications/d61f459d077d4cd0/table"
+        self.classification_two_table_url = "http://localhost:3000/api/v1/classifications/d61f459d077d4cd0/results"
 
     @responses.activate
     def test_classification_abundance_data(self):

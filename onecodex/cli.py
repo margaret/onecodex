@@ -114,7 +114,7 @@ def classifications(ctx, classifications, table, raw, raw_path):
             log.error("Can only request table data on one Classification at a time")
         else:
             classification = ctx.obj['API'].Classifications.get(classifications[0])
-            results = classification.table(as_dataframe=False)
+            results = classification.results(json=True)
             pprint(results, ctx.obj['NOPPRINT'])
 
     # fetch the raw

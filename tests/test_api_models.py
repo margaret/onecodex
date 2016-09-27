@@ -118,6 +118,12 @@ def test_classification_methods(ocx, api_data):
     assert isinstance(t, pd.DataFrame)
 
 
+def test_no_results_on_generic_analysis(ocx, api_data):
+    analysis = ocx.Analyses.get('f9e4a5506b154953')
+    with pytest.raises(NotImplementedError):
+        analysis.results()
+
+
 # Sorting and where clauses
 @pytest.mark.parametrize('where_args,where_kwargs,queries', [
     ([], {'public': True},
