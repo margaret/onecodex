@@ -20,7 +20,7 @@ class Analyses(OneCodexBase):
         Returns
         -------
         Return type varies by Analyses resource sub-type. See, e.g.,
-        Classifications or Markerpanels for documentation.
+        Classifications or Panels for documentation.
         """
         if json is True:
             return self._results()
@@ -158,11 +158,11 @@ class Classifications(Analyses):
             return res[res['tax_id'].isin(ids)]
 
 
-class Markerpanels(Analyses):
-    _resource_path = '/api/v1/markerpanels'
+class Panels(Analyses):
+    _resource_path = '/api/v1/panels'
 
     def results(self, json=True):
         if json is True:
             return self._results()
         else:
-            raise NotImplementedError('Markerpanel results only available as JSON at this time.')
+            raise NotImplementedError('Panel results only available as JSON at this time.')

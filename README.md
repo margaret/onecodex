@@ -71,7 +71,7 @@ The CLI supports retrieving your One Codex samples and analyses. The following r
 
 * `Analyses`, which include several subtypes with additional functionality and fields:
     * `Classifications`, which are basic metagenomic classification results for your samples
-    * `Markerpanels`, which are _in silico_ panels for particular genes or other functional markers ([example on One Codex](https://app.onecodex.com/markerpanel/sample))
+    * `Markerpanels`, which are _in silico_ panels for particular genes or other functional markers ([example on One Codex](https://app.onecodex.com/panel/sample))
 
 * `Jobs`, which provide information on the name, version, and type of analysis which was performed for a given `Analyses`
 
@@ -81,8 +81,8 @@ Simply invoke the `onecodex` command, using one of the above resource names as a
 # fetch all your samples
 onecodex samples
 
-# fetch a list of markerpanels based on their ids
-onecodex markerpanels 0123456789abcdef 0987654321fdecba
+# fetch a list of panels based on their ids
+onecodex panels 0123456789abcdef 0987654321fdecba
 ```
 
 # Using the Python client library

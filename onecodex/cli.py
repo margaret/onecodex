@@ -134,12 +134,12 @@ def classifications(ctx, classifications, table, raw, raw_path):
         log.error("Can only request one of raw data or table data at a time")
 
 
-@onecodex.command('markerpanels')
+@onecodex.command('panels')
 @click.pass_context
-@click.argument('markerpanels', nargs=-1, required=False)
-def markerpanels(ctx, markerpanels):
+@click.argument('panels', nargs=-1, required=False)
+def panels(ctx, panels):
     """Retrieve performed in silico panel results"""
-    cli_resource_fetcher(ctx, "markerpanels", markerpanels)
+    cli_resource_fetcher(ctx, "panels", panels)
 
 
 @onecodex.command('samples')

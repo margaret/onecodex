@@ -311,12 +311,12 @@ class OneCodexBase(object):
                 raise e
 
 
-from onecodex.models.analysis import Analyses, Classifications, Alignments, Markerpanels  # noqa
+from onecodex.models.analysis import Analyses, Classifications, Alignments, Panels  # noqa
 from onecodex.models.misc import Jobs, Projects, Tags, Users  # noqa
 from onecodex.models.sample import Samples, Metadata  # noqa
 
 
-__all__ = ['Samples', 'Classifications', 'Alignments', 'Markerpanels', 'Jobs', 'Projects', 'Tags',
+__all__ = ['Samples', 'Classifications', 'Alignments', 'Panels', 'Jobs', 'Projects', 'Tags',
            'Users', 'Metadata']
 
 

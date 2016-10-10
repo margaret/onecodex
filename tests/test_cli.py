@@ -74,9 +74,9 @@ def test_classifications_table(runner, api_data, mocked_creds_file, monkeypatch)
     assert "Salmonella" in result.output
 
 
-# Marker panels
-def test_markerpanel_instances(runner, api_data, mocked_creds_file):
-    result = runner.invoke(Cli, ['markerpanels'])
+# Panels
+def test_panel_instances(runner, api_data, mocked_creds_file):
+    result = runner.invoke(Cli, ['panels'])
     assert result.exit_code == 0
 
 
