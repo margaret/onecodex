@@ -54,18 +54,18 @@ def test_analysis_help(runner, api_data, mocked_creds_file):
 
 def test_analyses(runner, api_data, mocked_creds_file):
     r0 = runner.invoke(Cli, ['analyses'])
-    r1 = runner.invoke(Cli, ['analyses', 'f9e4a5506b154953'])
+    r1 = runner.invoke(Cli, ['analyses', '593601a797914cbf'])
     assert r0.exit_code == 0
     assert r1.exit_code == 0
-    assert API_DATA['GET::api/v1/analyses/f9e4a5506b154953']['$uri'] in r0.output
-    assert API_DATA['GET::api/v1/analyses/f9e4a5506b154953']['$uri'] in r1.output
+    assert API_DATA['GET::api/v1/analyses/593601a797914cbf']['$uri'] in r0.output
+    assert API_DATA['GET::api/v1/analyses/593601a797914cbf']['$uri'] in r1.output
 
 
 # Classifications
 def test_classification_instance(runner, api_data, mocked_creds_file):
-    result = runner.invoke(Cli, ['classifications', 'f9e4a5506b154953'])
+    result = runner.invoke(Cli, ['classifications', '593601a797914cbf'])
     assert result.exit_code == 0
-    assert API_DATA['GET::api/v1/classifications/f9e4a5506b154953']['$uri'] in result.output
+    assert API_DATA['GET::api/v1/classifications/593601a797914cbf']['$uri'] in result.output
 
 
 def test_classifications_table(runner, api_data, mocked_creds_file, monkeypatch):

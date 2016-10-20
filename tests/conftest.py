@@ -205,22 +205,21 @@ def upload_mocks():
         return (201, {'location': 'on-aws'}, {})
 
     json_data = {
-        'GET::api/v1/samples/presign_upload': {
-            'callback_url': '/api/confirm_upload',
-            'signing_url': '/s3_sign',
-            'url': 'http://localhost:3000/fake_aws_callback'
-        },
-        'POST::api/confirm_upload': '',
-        'POST::s3_sign': {
-            'AWSAccessKeyId': 'AKIAI36HUSHZTL3A7ORQ',
-            'success_action_status': 201,
-            'acl': 'private',
-            'key': 'asd/file_ab6276c673814123/myfile.fastq',
-            'signature': 'asdjsa',
-            'policy': '123123123',
-            'x-amz-server-side-encryption': 'AES256'
-        },
         'POST:multipart/form-data:fake_aws_callback': upload_callback,
+        'POST::api/v1/samples/init_upload': {
+            'upload_url': 'http://localhost:3000/fake_aws_callback',
+            'sample_id': 'ab6276c673814123',
+            'additional_fields': {
+                'AWSAccessKeyId': 'AKIAI36HUSHZTL3A7ORQ',
+                'success_action_status': 201,
+                'acl': 'private',
+                'key': 'asd/file_ab6276c673814123/myfile.fastq',
+                'signature': 'asdjsa',
+                'policy': '123123123',
+                'x-amz-server-side-encryption': 'AES256'
+            }
+        },
+        'POST::api/v1/samples/confirm_upload': '',
         'GET::api/v1/samples/init_multipart_upload': {
             'callback_url': '/api/import_file_from_s3',
             'file_id': 'abcdef0987654321',

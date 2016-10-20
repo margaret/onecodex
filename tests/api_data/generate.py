@@ -22,3 +22,7 @@ for resource in schema['properties'].keys():
     instances = fetch('/api/v1/' + resource + '?per_page=500')
     with open('{}.json'.format(resource), mode='w') as f:
         f.write(json.dumps(instances))
+
+    schema = fetch('/api/v1/' + resource + '/schema')
+    with open('schema_{}.json'.format(resource), mode='w') as f:
+        f.write(json.dumps(schema))

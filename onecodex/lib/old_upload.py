@@ -138,14 +138,7 @@ def _upload_direct(files, session, samples_resource, server_url, threads):
     if threads != DEFAULT_UPLOAD_THREADS:
         print("Uploading with up to %d thread(s)." % threads)
 
-    # Get the initially needed routes
-    routes = samples_resource.read_presign_upload()
-
-    # parse out routes
-    s3_url = routes['url']
-    signing_url = server_url.rstrip('/') + routes['signing_url']
-    callback_url = server_url.rstrip('/') + routes['callback_url']
-
+    # Set up upload threads
     upload_threads = []
     upload_progress_bytes = Value('L', 0)
     upload_progress_lock = Lock()
@@ -156,13 +149,13 @@ def _upload_direct(files, session, samples_resource, server_url, threads):
         if threads > 1 and len(files) > 1:  # parallel uploads
             # Multi-threaded uploads
             t = Thread(target=_upload_helper,
-                       args=(f, session, s3_url, signing_url, callback_url,
+                       args=(f, session, samples_resource, server_url,
                              upload_progress_bytes, upload_progress_lock,
                              total_bytes, total_files, semaphore))
             upload_threads.append(t)
             t.start()
         else:  # serial uploads
-            _upload_helper(f, session, s3_url, signing_url, callback_url,
+            _upload_helper(f, session, samples_resource, server_url,
                            upload_progress_bytes, upload_progress_lock,
                            total_bytes, total_files)
 
@@ -171,7 +164,7 @@ def _upload_direct(files, session, samples_resource, server_url, threads):
                 ut.join()
 
 
-def _upload_helper(filename, session, s3_url, signing_url, callback_url,
+def _upload_helper(filename, session, samples_resource, server_url,
                    upload_progress_bytes, upload_progress_lock,
                    total_bytes, total_files, semaphore=None):
     """
@@ -179,10 +172,9 @@ def _upload_helper(filename, session, s3_url, signing_url, callback_url,
         calls to the app server to sign the upload and record success.
         It also passes byte amount info to the callback for prograss bar
 
-    -param str file: The filepath to be uploaded in this thread
-    -param str s3_url: The signed s3 bucket url to upload to
-    -param str signing_url: The url to post the signing request too
-    -param str callback_url: Url to post successful upload notice too
+    -param str filename: The filepath to be uploaded in this thread
+    -param Resource samples_resource: The Sample API resource
+    -param str server_url: The server's base URL
     -param int upload_progress_bytes: Bytes uploaded so far
     -param Lock upload_progress_lock: The thread lock
     -param int total_bytes: Total bytes left to upload
@@ -190,31 +182,29 @@ def _upload_helper(filename, session, s3_url, signing_url, callback_url,
     -param BoundedSemaphore semaphore: Count of threads in existence
 
     """
+    stripped_filename = os.path.basename(filename)
+    try:
+        upload_info = samples_resource.init_upload({
+            'filename': stripped_filename,
+            'size': os.path.getsize(filename),
+            'upload_type': 'standard'  # This is multipart form data
+        })
+    except requests.exceptions.HTTPError:
+        print('The attempt to initiate your upload failed. Please make '
+              'sure you are logged in (`onecodex login`) and try again. '
+              'If you continue to experience problems, contact us at '
+              'help@onecodex.com for assistance.')
+        raise SystemExit
+    upload_url = upload_info['upload_url']
 
     # First get the signing form data
     if semaphore is not None:
         semaphore.acquire()
 
-    stripped_filename = os.path.basename(filename)
-    signing_request = session.post(signing_url,
-                                   data={"filename": stripped_filename,
-                                         "via_api": "true"},
-                                   headers={"x-amz-server-side-encryption": "AES256"})  # noqa
-
-    if signing_request.status_code != 200:
-        try:
-            print("Failed upload: %s" % signing_request.json()["msg"])
-        except:
-            print("Upload failed. Please contact help@onecodex.com for "
-                  "assistance if you continue to experience problems.")
-        raise SystemExit
-
-    file_uuid = signing_request.json()['key'].split("/")[-2][5:]
-
     # Coerce to str or MultipartEncoder fails
     # Need a list to preserve order for S3
     fields = []
-    for k, v in signing_request.json().items():
+    for k, v in upload_info['additional_fields'].items():
         fields.append((str(k), str(v)))
 
     fields.append(("file", (stripped_filename, open(filename, mode='rb'), "text/plain")))
@@ -228,7 +218,7 @@ def _upload_helper(filename, session, s3_url, signing_url, callback_url,
     n_retries = 0
     while n_retries < max_retries:
         try:
-            upload_request = session.post(s3_url, data=m,
+            upload_request = session.post(upload_url, data=m,
                                           headers={"Content-Type": m.content_type},
                                           auth={})
             if upload_request.status_code != 201:
@@ -245,13 +235,13 @@ def _upload_helper(filename, session, s3_url, signing_url, callback_url,
                 raise SystemExit
 
     # Finally, issue a callback
-    callback_request = session.post(callback_url, data={
-        "location": upload_request.headers['location'],
-        "size": os.path.getsize(filename)
-    })
-
-    if callback_request.status_code == 200:
-        success_msg = "Successfully uploaded: %s. File ID is: %s." % (filename, file_uuid)
+    try:
+        samples_resource.confirm_upload({
+            'sample_id': upload_info['sample_id'],
+            'upload_type': 'standard'
+        })
+        success_msg = ("Successfully uploaded: %s. Sample ID is: %s." %
+                       (filename, upload_info['sample_id']))
         if upload_progress_bytes.value == -1:  # == -1 upon completion
             print(success_msg)
         else:
@@ -260,7 +250,7 @@ def _upload_helper(filename, session, s3_url, signing_url, callback_url,
             print(success_msg)
         with upload_progress_lock:
             total_files.value -= 1
-    else:
+    except requests.exceptions.HTTPError:
         print("Failed to upload: %s" % filename)
         raise SystemExit
 
@@ -295,8 +285,10 @@ def _upload_callback(monitor, upload_progress_bytes, lock, total_bytes, n_files)
         status = "Done.                         \r\n"
         with lock:
             upload_progress_bytes.value = -1
+    elif progress <= 0.9:
+        status = ''
     else:
-        status = "Almost done"
+        status = 'Completing...'
     block = int(round(bar_length * progress))
     text = "\rUploading: [{0}] {1:.2f}% {2}".format(
         "#" * block + "-" * (bar_length - block),
