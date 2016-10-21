@@ -100,8 +100,12 @@ def is_insecure_platform():
     Checks if the current system is missing an SSLContext object
     """
     v = sys.version_info
+    if v.major == 3:
+        return False  # Python 2 issue
+
     if v.major == 2 and v.minor == 7 and v.micro >= 9:
         return False  # >= 2.7.9 includes the new SSL updates
+
     try:
         import OpenSSL  # noqa
         import ndg  # noqa
