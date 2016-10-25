@@ -29,7 +29,7 @@ class Api(object):
 
     def __init__(self, extensions=True, api_key=None,
                  bearer_token=None, cache_schema=False,
-                 base_url="http://app.onecodex.com",
+                 base_url="https://app.onecodex.com",
                  schema_path="/api/v1/schema"):
 
         self._req_args = {}
