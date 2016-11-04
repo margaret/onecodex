@@ -69,7 +69,7 @@ def test_classification_instance(runner, api_data, mocked_creds_file):
 
 
 def test_classifications_table(runner, api_data, mocked_creds_file, monkeypatch):
-    result = runner.invoke(Cli, ['classifications', 'f9e4a5506b154953', '--table'])
+    result = runner.invoke(Cli, ['classifications', 'f9e4a5506b154953', '--results'])
     assert result.exit_code == 0
     assert "Salmonella" in result.output
 

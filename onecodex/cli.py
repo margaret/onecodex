@@ -97,28 +97,28 @@ def analyses(ctx, analyses):
               help=OPTION_HELP['raw'])
 @click.option("--raw-path", 'raw_path',
               default="./", help=OPTION_HELP['raw_path'])
-@click.option("--table", 'table', is_flag=True,
-              help=OPTION_HELP['table'])
+@click.option("--results", 'results', is_flag=True,
+              help=OPTION_HELP['results'])
 @click.pass_context
 @click.argument('classifications', nargs=-1, required=False)
-def classifications(ctx, classifications, table, raw, raw_path):
+def classifications(ctx, classifications, results, raw, raw_path):
     """Retrieve performed metagenomic classifications"""
 
     # basic operation -- just print
-    if not raw and not table:
+    if not raw and not results:
         cli_resource_fetcher(ctx, "classifications", classifications)
 
-    # fetch the table
-    elif not raw and table:
+    # fetch the results
+    elif not raw and results:
         if len(classifications) != 1:
-            log.error("Can only request table data on one Classification at a time")
+            log.error("Can only request results data on one Classification at a time")
         else:
             classification = ctx.obj['API'].Classifications.get(classifications[0])
             results = classification.results(json=True)
             pprint(results, ctx.obj['NOPPRINT'])
 
     # fetch the raw
-    elif raw is not None and not table:
+    elif raw is not None and not results:
 
         if len(classifications) != 1:
             log.error("Can only request raw data on one Classification at a time")
@@ -131,7 +131,7 @@ def classifications(ctx, classifications, table, raw, raw_path):
 
     # both given -- complain
     else:
-        log.error("Can only request one of raw data or table data at a time")
+        log.error("Can only request one of raw data or results data at a time")
 
 
 @onecodex.command('panels')

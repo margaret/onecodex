@@ -25,7 +25,7 @@ OPTION_HELP = {
     'threads': 'Do not use multiple background threads to upload files',  # noqa
     'max_threads': 'Specify a different max # of upload threads (defaults to 4)',  # noqa
     'verbose': 'Log extra information to STDERR',
-    'table': 'Get a JSON array of the metagenomic classification results table',
+    'results': 'Get a JSON array of the metagenomic classification results table',
     'raw': 'Get the readlevel data as a .tsv file',
     'raw_path': ('Output path or directory for a .tsv file with the raw '
                  'read-level results. Defaults to original filename in '
