@@ -51,7 +51,7 @@ def check_version(version, server_url, client='cli'):
         Could use python package `semver` if we need more precise checks in
         edge cases, but this generally works for now.
         """
-        client_version = tuple([int(x) for x in client_version.split('.')])
+        client_version = tuple([int(x) for x in client_version.split('-')[0].split('.')])
         server_version = tuple([int(x) for x in server_version.split('.')])
         return client_version < server_version
 
