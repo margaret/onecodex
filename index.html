@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="UTF-8">
+    <title>onecodex by onecodex</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
+  </head>
+  <body>
+    <section class="page-header">
+      <h1 class="project-name">onecodex</h1>
+      <h2 class="project-tagline">Command line interface and Python client library for the One Codex API</h2>
+      <a href="https://github.com/onecodex/onecodex" class="btn">View on GitHub</a>
+      <a href="https://github.com/onecodex/onecodex/zipball/master" class="btn">Download .zip</a>
+      <a href="https://github.com/onecodex/onecodex/tarball/master" class="btn">Download .tar.gz</a>
+    </section>
+
+    <section class="main-content">
+      <h1>
+<a id="one-codex-api" class="anchor" href="#one-codex-api" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>One Codex API</h1>
+
+<p><a href="https://circleci.com/gh/onecodex/onecodex"><img src="https://circleci.com/gh/onecodex/onecodex.png?style=shield&amp;circle-token=d86a8fc55e54a645ee515387db9acee32068a6ad" alt="Circle CI"></a> <a href="https://coveralls.io/github/onecodex/onecodex"><img src="https://coveralls.io/repos/github/onecodex/onecodex/badge.svg" alt="Coverage Status"></a></p>
+
+<p>Command line interface (CLI) and Python client library for interacting with the One Codex v1 API.</p>
+
+<p><strong>Warning</strong>: The One Codex v1 API is currently being actively developed. While we do not expect major breaking changes (i.e., removing fields from resources currently available via the API), it should be treated as a <strong>beta release</strong>. If you need strong stability guarantees, we recommend using <a href="docs.onecodex.com/v0/docs">our v0 API</a>.</p>
+
+<p>MAINTAINERS: <a href="https://github.com/bovee">@bovee</a>, <a href="https://github.com/boydgreenfield">@boydgreenfield</a></p>
+
+<h1>
+<a id="installation" class="anchor" href="#installation" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Installation</h1>
+
+<p>This package provides 3 major pieces of functionality: (1) a core Python client library; (2) a simple CLI for interacting with the One Codex platform that uses that core library; and (3) optional extensions to the client library, which offers many features aimed at advanced users and provides functionality for use in interactive notebook environments (e.g., IPython notebooks).</p>
+
+<h3>
+<a id="basic-installation" class="anchor" href="#basic-installation" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a><em>Basic installation</em>
+</h3>
+
+<p>The CLI (and core Python library) may be simply installed using <code>pip</code>. To download a minimal installation (#1 and #2), simply run:</p>
+
+<div class="highlight highlight-source-shell"><pre>pip install onecodex</pre></div>
+
+<h3>
+<a id="installation-with-optional-extensions" class="anchor" href="#installation-with-optional-extensions" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a><em>Installation with optional extensions</em>
+</h3>
+
+<p>To also download the optional extensions to the client library - and all of their dependencies - use the command <code>pip install onecodex[all]</code>. <strong>Warning:</strong> Because other packages used in the extensions rely upon <code>numpy</code> being present during their installation, <code>numpy</code> must be installed seperately first. So if you do not have <code>numpy</code> installed, and you are going to install <code>onecodex[all]</code> please do the following:</p>
+
+<div class="highlight highlight-source-shell"><pre><span class="pl-c"># If numpy is not installed in your environment</span>
+pip install numpy
+
+<span class="pl-c"># Once you have numpy installed</span>
+pip install onecodex[all]</pre></div>
+
+<h1>
+<a id="using-the-cli" class="anchor" href="#using-the-cli" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Using the CLI</h1>
+
+<h2>
+<a id="logging-in" class="anchor" href="#logging-in" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Logging in</h2>
+
+<p>The CLI supports authentication using either your One Codex API key or your One Codex username and password.
+To log in using your username and password:</p>
+
+<div class="highlight highlight-source-shell"><pre>onecodex login</pre></div>
+
+<p>This command will save a credentials file at <code>~/.onecodex</code>, which will then automatically be used for authentication the next time the CLI or Python client library are used (OS X/Linux only). You can clear this file and remove your API key from your machine with <code>onecodex logout</code>.</p>
+
+<p>In a shared environment, we recommend directly using your One Codex API key, rather than logging in and storing it in a credentials file. To use API key authentication, simply pass your key as an argument to the <code>onecodex</code> command:</p>
+
+<div class="highlight highlight-source-shell"><pre>onecodex --api-key=YOUR_API_KEY samples</pre></div>
+
+<p>Your API key can be found on the <a href="https://app.onecodex.com/settings">One Codex settings page</a> and should be 32 character string. You may also generate a new API key on the settings page in the web application. <em>Note</em>: Because your API key provides access to all of the samples and metadata in your account, you should immediately reset your key on the website if it is ever accidentally revealed or saved (e.g., checked into a GitHub repository).</p>
+
+<h2>
+<a id="uploading-files" class="anchor" href="#uploading-files" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Uploading files</h2>
+
+<p>The CLI supports uploading FASTA or FASTQ files (optionally gzip compressed) via the <code>upload</code> command.</p>
+
+<div class="highlight highlight-source-shell"><pre>onecodex upload bacterial_reads_file.fq.gz</pre></div>
+
+<p>Multiple files can be uploaded in a single command as well:</p>
+
+<div class="highlight highlight-source-shell"><pre>onecodex upload file1.fq.gz file2.fq.gz ...</pre></div>
+
+<p><em>Note</em>: Files larger than <strong>5GB</strong> are supported, but require that you have the <code>aws-cli</code> package installed on your computer. <code>aws-cli</code> can be installed with <code>pip install aws-cli</code>.</p>
+
+<h2>
+<a id="resources" class="anchor" href="#resources" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Resources</h2>
+
+<p>The CLI supports retrieving your One Codex samples and analyses. The following resources may be queried:</p>
+
+<ul>
+<li><p>Your samples (<code>Samples</code>)</p></li>
+<li><p>Sample metadata (<code>Metadata</code>)</p></li>
+<li>
+<p><code>Analyses</code>, which include several subtypes with additional functionality and fields:</p>
+
+<ul>
+<li>
+<code>Classifications</code>, which are basic metagenomic classification results for your samples</li>
+<li>
+<code>Panels</code>, which are <em>in silico</em> panels for particular genes or other functional markers (<a href="https://app.onecodex.com/panel/sample">example on One Codex</a>)</li>
+</ul>
+</li>
+<li><p><code>Jobs</code>, which provide information on the name, version, and type of analysis which was performed for a given <code>Analyses</code></p></li>
+</ul>
+
+<p>Simply invoke the <code>onecodex</code> command, using one of the above resource names as a subcommand (all lowercase). For example:</p>
+
+<div class="highlight highlight-source-shell"><pre><span class="pl-c"># fetch all your samples</span>
+onecodex samples
+
+<span class="pl-c"># fetch a list of panels based on their ids</span>
+onecodex panels 0123456789abcdef 0987654321fdecba</pre></div>
+
+<h1>
+<a id="using-the-python-client-library" class="anchor" href="#using-the-python-client-library" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Using the Python client library</h1>
+
+<h2>
+<a id="initalization" class="anchor" href="#initalization" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Initalization</h2>
+
+<p>To load the API, use the following import:</p>
+
+<div class="highlight highlight-source-python"><pre><span class="pl-k">from</span> onecodex.api <span class="pl-k">import</span> Api</pre></div>
+
+<p>Instantiate an API client either by passing your API key or automatically fetching your credentials from <code>~/.onecodex</code> if you've previously called <code>onecodex login</code>.</p>
+
+<div class="highlight highlight-source-python"><pre><span class="pl-k">from</span> onecodex.api <span class="pl-k">import</span> Api
+
+<span class="pl-c"># Instantiate a One Codex API object, will attempt to get credentials from ~/.onecodex</span>
+ocx <span class="pl-k">=</span> Api()
+
+<span class="pl-c"># Instantiate an API object, manually specifying an API key</span>
+ocx <span class="pl-k">=</span> Api(<span class="pl-v">api_key</span><span class="pl-k">=</span><span class="pl-s"><span class="pl-pds">"</span>YOUR_API_KEY_HERE<span class="pl-pds">"</span></span>)</pre></div>
+
+<h2>
+<a id="resources-1" class="anchor" href="#resources-1" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Resources</h2>
+
+<p>Resources are exposed as attributes on the API object. You can fetch a resource directly by its ID or you can fetch it using the query interface. Currently you can access resources using either <code>get()</code> or <code>where()</code>. If you need help finding the ID for a sample, its identifier is part of its url on our webpage: e.g. for an analysis at <code>https://app.onecodex.com/analysis/public/1d9491c5c31345b6</code>, the ID is <code>1d9491c5c31345b6</code>. IDs are all short unique identifiers, consisting of 16 hexadecimal characters (<code>0-9a-f</code>).</p>
+
+<div class="highlight highlight-source-python"><pre>all_completed_analyses <span class="pl-k">=</span> ocx.Classifications.where(<span class="pl-v">complete</span><span class="pl-k">=</span><span class="pl-c1">True</span>)
+sample_analysis <span class="pl-k">=</span> ocx.Classifications.get(<span class="pl-s"><span class="pl-pds">"</span>1d9491c5c31345b6<span class="pl-pds">"</span></span>)
+sample_analysis.results()  <span class="pl-c"># Returns classification results as JSON object</span>
+sample_analysis.table()    <span class="pl-c"># Returns a pandas dataframe</span></pre></div>
+
+<h1>
+<a id="development" class="anchor" href="#development" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Development</h1>
+
+<p>Before developing, <code>git</code> and <code>python</code> (version 2.7 or &gt;3.4) are needed.</p>
+
+<p>To download the client library from GitHub:</p>
+
+<div class="highlight highlight-source-shell"><pre>git clone https://github.com/onecodex/onecodex.git
+<span class="pl-c1">cd</span> onecodex/</pre></div>
+
+<p>To set up the project, first create a virtual environment and then install dependencies:</p>
+
+<div class="highlight highlight-source-shell"><pre>virtualenv venv
+<span class="pl-c1">source</span> venv/bin/activate
+pip install numpy  <span class="pl-c"># numpy must be installed before any of its dependencies</span>
+pip install -r requirements.txt</pre></div>
+
+<p>Test are run through the makefile, and call tox. Note this may take awhile at first because of installing dependencies:</p>
+
+<div class="highlight highlight-source-shell"><pre>make lint
+make <span class="pl-c1">test</span></pre></div>
+
+      <footer class="site-footer">
+        <span class="site-footer-owner"><a href="https://github.com/onecodex/onecodex">onecodex</a> is maintained by <a href="https://github.com/onecodex">onecodex</a>.</span>
+
+        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the <a href="https://github.com/jasonlong/cayman-theme">Cayman theme</a> by <a href="https://twitter.com/jasonlong">Jason Long</a>.</span>
+      </footer>
+
+    </section>
+
+  
+  </body>
+</html>
