@@ -1,6 +1,7 @@
 import bz2
 from collections import deque
 import gzip
+import os
 import re
 import string
 import warnings
@@ -102,6 +103,22 @@ class FASTXNuclIterator():
         else:
             self.valid_bases = set(b'ACGTNUXacgtnux' + string.whitespace.encode())
         self.as_raw = as_raw
+
+        if hasattr(file_obj, 'name'):
+            self.name = file_obj.name
+        else:
+            self.name = 'File'
+
+        try:
+            total_size = os.fstat(file_obj.fileno()).st_size
+            if total_size < 100:
+                raise ValidationError('{} is too small to be analyzed: {} bytes'.format(
+                    self.name, self.total_size
+                ))
+        except IOError:
+            pass
+        self.processed_size = 0
+
         self.warnings = set()
 
     def _set_file_obj(self, file_obj, check_filename=True):
@@ -116,13 +133,13 @@ class FASTXNuclIterator():
         start = file_obj.read(1)
         if start == b'\x1f':
             if check_filename and not file_obj.name.endswith('.gz', '.gzip'):
-                raise ValidationError('File is gzipped, but lacks a ".gz" ending')
+                raise ValidationError('{} is gzipped, but lacks a ".gz" ending'.format(self.name))
             _temp_patch_read(file_obj, b'\x1f')
             file_obj = gzip.open(file_obj)
             start = file_obj.read(1)
         elif start == b'\x42' and hasattr(bz2, 'open'):
             if check_filename and not file_obj.name.endswith(('.bz2', '.bz', '.bzip')):
-                raise ValidationError('File is bzipped, but lacks a ".bz2" ending')
+                raise ValidationError('{} is bzipped, but lacks a ".bz2" ending'.format(self.name))
             # we can only read BZ2 files in python 3.3 and above
             _temp_patch_read(file_obj, b'\x42')
             file_obj = bz2.open(file_obj)
@@ -134,14 +151,14 @@ class FASTXNuclIterator():
             if check_filename and not ('.fa' in file_obj.name or
                                        '.fna' in file_obj.name or
                                        '.fasta' in file_obj.name):
-                raise ValidationError('File is FASTA, but lacks a ".fa" ending')
+                raise ValidationError('{} is FASTA, but lacks a ".fa" ending'.format(self.name))
         elif start == b'@':
             self.file_type = 'FASTQ'
             if check_filename and not ('.fq' in file_obj.name or
                                        '.fastq' in file_obj.name):
-                raise ValidationError('File is FASTQ, but lacks a ".fq" ending')
+                raise ValidationError('{} is FASTQ, but lacks a ".fq" ending'.format(self.name))
         else:
-            raise ValidationError('File is not valid FASTX')
+            raise ValidationError('{} is not valid FASTX'.format(self.name))
 
         self.file_obj = file_obj
 
@@ -175,17 +192,17 @@ class FASTXNuclIterator():
         # FIXME: fail if reads aren't interleaved and an override flag isn't passed?
         seq_id, seq, qual = rec['id'], rec['seq'], rec.get('qual')
         if b'\t' in seq_id:
-            self._warn_once('File can not have tabs in headers; autoreplacing')
+            self._warn_once('{} can not have tabs in headers; autoreplacing'.format(self.name))
             seq_id = seq_id.replace('\t', '|')
         set_seq = set(seq)
         if not set_seq.issubset(self.valid_bases):
-            raise ValidationError('File contains non-nucleic acid sequence characters')
+            raise ValidationError('{} contains non-nucleic acid characters'.format(self.name))
         if set_seq.intersection(WHITESPACE):
             # TODO: everything has newlines in it b/c of the way the regexs are set up
             # maybe we should fix this so we can warn on it?
             seq = seq.translate(None, WHITESPACE)
         if set_seq.intersection(OTHER_BASES):
-            self._warn_once('Translating other bases (X->N,U->T)')
+            self._warn_once('Translating other bases in {} (X->N,U->T)'.format(self.name))
             seq = seq.translate(OTHER_BASE_TRANS)
         return seq_id, seq, qual
 
@@ -214,37 +231,55 @@ class FASTXNuclIterator():
                     yield '@{}\n{}\n+\n{}\n'.format(seq_id, seq, qual)
                 end = match.end()
 
+            self.processed_size += end
             self.unchecked_buffer = self.unchecked_buffer[end:]
 
 
 class FASTXTranslator():
-    def __init__(self, file_obj, pair=None, recompress=True, **kwargs):
+    def __init__(self, file_obj, pair=None, recompress=True, progress_callback=None, **kwargs):
         # detect if gzipped/bzipped and uncompress transparently
-        reads = FASTXNuclIterator(file_obj, **kwargs)
-        self.reads = iter(reads)
+        self.reads = FASTXNuclIterator(file_obj, **kwargs)
+        self.reads_iter = iter(self.reads)
         if pair is not None:
-            reads_pair = FASTXNuclIterator(pair)
-            self.reads_pair = iter(reads_pair)
-            if reads.file_type != reads_pair.file_type:
+            self.reads_pair = FASTXNuclIterator(pair)
+            self.reads_pair_iter = iter(self.reads_pair)
+            if self.reads.file_type != self.reads_pair.file_type:
                 raise ValidationError('Paired files are different types (FASTA/FASTQ)')
         else:
             self.reads_pair = None
+            self.reads_pair_iter = None
 
         if recompress:
             self.checked_buffer = GzipBuffer()
         else:
             self.checked_buffer = Buffer()
 
-    def read(self, n=-1):
-        while len(self.checked_buffer) < n or n < 0:
-            try:
-                record = next(self.reads)
-            except StopIteration:
-                record = None
+        self.progress_callback = progress_callback
 
-            if self.reads_pair is not None:
+    def read(self, n=-1):
+        if self.reads_pair is None:
+            while len(self.checked_buffer) < n or n < 0:
                 try:
-                    record_pair = next(self.reads_pair)
+                    record = next(self.reads_iter)
+                except StopIteration:
+                    record = None
+
+                if record is not None:
+                    self.checked_buffer.write(record)
+                elif record is None:
+                    self.checked_buffer.close()
+                    break
+
+            if self.progress_callback is not None:
+                self.progress_callback(self.reads.name, self.reads.processed_size)
+        else:
+            while len(self.checked_buffer) < n or n < 0:
+                try:
+                    record = next(self.reads_iter)
+                except StopIteration:
+                    record = None
+                try:
+                    record_pair = next(self.reads_pair_iter)
                 except StopIteration:
                     record_pair = None
 
@@ -256,12 +291,12 @@ class FASTXTranslator():
                     break
                 else:
                     raise ValidationError('Paired read files are not the same length')
-            else:
-                if record is not None:
-                    self.checked_buffer.write(record)
-                elif record is None:
-                    self.checked_buffer.close()
-                    break
+
+            if self.progress_callback is not None:
+                self.progress_callback(self.reads.name,
+                                       self.reads.processed_size + self.reads_pair.processed_size)
+
+        self.reads.processed_size
 
         return self.checked_buffer.read(n)
 
