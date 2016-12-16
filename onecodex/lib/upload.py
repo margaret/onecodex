@@ -12,13 +12,7 @@ from threading import BoundedSemaphore, Thread
 import requests
 
 from onecodex.lib.inline_validator import FASTXTranslator
-
-
-class UploadException(Exception):
-    """
-    An exception for when things go wrong with uploading
-    """
-    pass
+from onecodex.exceptions import UploadException
 
 
 MULTIPART_SIZE = 5 * 1000 * 1000 * 1000

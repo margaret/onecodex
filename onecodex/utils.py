@@ -30,6 +30,8 @@ OPTION_HELP = {
     'raw_path': ('Output path or directory for a .tsv file with the raw '
                  'read-level results. Defaults to original filename in '
                  'the current working directory'),
+    'clean': ("Automatically clean up FASTX records during upload. This removes tabs from "
+              "headers and converts U to T. If not passed, these will cause errors."),
 }
 
 SUPPORTED_EXTENSIONS = ["fa", "fasta", "fq", "fastq",

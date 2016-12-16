@@ -6,13 +6,7 @@ import re
 import string
 import warnings
 
-
-class ValidationError(Exception):
-    pass
-
-
-class ValidationWarning(Warning):
-    pass
+from onecodex.exceptions import ValidationError, ValidationWarning
 
 
 # buffer code from

@@ -4,8 +4,10 @@ cli.py
 author: @mbiokyle29
 """
 from __future__ import print_function
-import os
 import logging
+import os
+import re
+import warnings
 
 import click
 
@@ -13,6 +15,7 @@ from onecodex.utils import (cli_resource_fetcher, download_file_helper,
                             valid_api_key, OPTION_HELP, pprint,
                             warn_if_insecure_platform)
 from onecodex.api import Api
+from onecodex.exceptions import ValidationWarning, ValidationError, UploadException
 from onecodex.auth import _login, _logout, _silent_login
 from onecodex.version import __version__
 
@@ -159,13 +162,42 @@ def samples(ctx, samples):
               help=OPTION_HELP['max_threads'], metavar="<int:threads>")
 @click.argument('files', nargs=-1, required=False,
                 type=click.Path(exists=True))
+@click.option("--clean", is_flag=True,
+              help=OPTION_HELP['clean'],
+              default=False)
 @click.pass_context
-def upload(ctx, files, no_threads, max_threads):
+def upload(ctx, files, no_threads, max_threads, clean):
     """Upload a FASTA or FASTQ (optionally gzip'd) to One Codex"""
-    if not no_threads:
-        ctx.obj['API'].Samples.upload(files, threads=max_threads)
-    else:
-        ctx.obj['API'].Samples.upload(files, threads=1)
+    # "intelligently" find paired files and tuple them
+    paired_files = []
+    single_files = set(files)
+    for filename in files:
+        # convert "read 1" filenames into "read 2" and check that they exist; if they do
+        # upload the files as a pair, autointerleaving them
+        pair = re.sub('[._][Rr]1[._]', lambda x: x.group().replace('1', '2'), filename)
+        # we don't necessary need the R2 to have been passed in; we infer it anyways
+        if pair != filename and os.path.exists(pair):
+            paired_files.append((filename, pair))
+            if pair in single_files:
+                single_files.remove(pair)
+            single_files.remove(filename)
+    files = paired_files + list(single_files)
+
+    if not clean:
+        warnings.filterwarnings('error', category=ValidationWarning)
+
+    try:
+        # do the uploading
+        if not no_threads:
+            ctx.obj['API'].Samples.upload(files, threads=max_threads)
+        else:
+            ctx.obj['API'].Samples.upload(files, threads=1)
+    except ValidationWarning as e:
+        log.error('{}. {}'.format(e, 'Running with the --clean flag will suppress this error.'))
+    except ValidationError as e:
+        log.error(str(e))
+    except UploadException as e:
+        log.error(str(e))
 
 
 @onecodex.command('login')
