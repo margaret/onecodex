@@ -168,6 +168,9 @@ def samples(ctx, samples):
 @click.pass_context
 def upload(ctx, files, no_threads, max_threads, clean):
     """Upload a FASTA or FASTQ (optionally gzip'd) to One Codex"""
+    if len(files) == 0:
+        print(ctx.get_help())
+        return
     # "intelligently" find paired files and tuple them
     paired_files = []
     single_files = set(files)
@@ -193,11 +196,11 @@ def upload(ctx, files, no_threads, max_threads, clean):
         else:
             ctx.obj['API'].Samples.upload(files, threads=1)
     except ValidationWarning as e:
-        log.error('{}. {}'.format(e, 'Running with the --clean flag will suppress this error.'))
+        log.error('\n{}. {}'.format(e, 'Running with the --clean flag will suppress this error.'))
     except ValidationError as e:
-        log.error(str(e))
+        log.error('\n{}'.format(e))
     except UploadException as e:
-        log.error(str(e))
+        log.error('\n{}'.format(e))
 
 
 @onecodex.command('login')

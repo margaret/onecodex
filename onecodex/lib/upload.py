@@ -2,8 +2,9 @@
 Functions for connecting to the One Codex server; these should be rolled out
 into the onecodex python library at some point for use across CLI and GUI clients
 """
-from __future__ import print_function
+from __future__ import print_function, division
 
+from collections import OrderedDict
 from math import floor
 import os
 import re
@@ -17,21 +18,21 @@ from onecodex.exceptions import UploadException
 
 MULTIPART_SIZE = 5 * 1000 * 1000 * 1000
 DEFAULT_UPLOAD_THREADS = 4
-CHUNK_SIZE = 8192
 
 
-def _wrap_files(filename):
+def _wrap_files(filename, logger=None):
     """
     A little helper to wrap a sequencing file (or join and wrap R1/R2 pairs) and return
     a merged file_object and a "new" filename for the output
     """
     if isinstance(filename, tuple):
-        file_obj = FASTXTranslator(open(filename[0], 'rb'), pair=open(filename[1], 'rb'))
+        file_obj = FASTXTranslator(open(filename[0], 'rb'), pair=open(filename[1], 'rb'),
+                                   progress_callback=logger)
         # strip out the _R1_/etc chunk from the first filename if this is a paired upload
         # and make that the filename
         filename = re.sub('[._][Rr][12][._]', '', filename[0])
     else:
-        file_obj = FASTXTranslator(open(filename, 'rb'))
+        file_obj = FASTXTranslator(open(filename, 'rb'), progress_callback=logger)
 
     new_filename, ext = os.path.splitext(os.path.basename(filename))
     if ext in {'.gz', '.gzip', '.bz', '.bz2', '.bzip'}:
@@ -52,13 +53,14 @@ def upload(files, session, samples_resource, server_url, threads=DEFAULT_UPLOAD_
     downstream upload functions. Also, wraps the files with a streaming validator to ensure they
     work.
     """
+    threads=1  # FIXME
     file_sizes = []
     for filename in files:
         if isinstance(filename, tuple):
             assert len(filename) == 2
             file_sizes.append(sum(os.path.getsize(f) for f in filename))
         else:
-            file_sizes = os.path.getsize(filename)
+            file_sizes.append(os.path.getsize(filename))
 
     # set up the logging
     bar_length = 20
@@ -67,18 +69,18 @@ def upload(files, session, samples_resource, server_url, threads=DEFAULT_UPLOAD_
         log_to.flush()
 
     overall_size = sum(file_sizes)
-    transferred_sizes = {}
+    transferred_sizes = {name: 0 for name in files}
 
-    def logger(filename, bytes_transferred):
+    def progress_bar(filename, bytes_transferred):
         prev_progress = sum(transferred_sizes.values()) / overall_size
-        transferred_sizes[filename] += bytes_transferred
+        transferred_sizes[filename] = bytes_transferred
         progress = sum(transferred_sizes.values()) / overall_size
-        if floor(bar_length * prev_progress) == floor(bar_length * progress):
+        if floor(100 * prev_progress) == floor(100 * progress):
             return
 
         block = int(round(bar_length * progress))
         bar = '#' * block + '-' * (bar_length - block)
-        log_to.write('\rUploading: [{}] {:.2f}%'.format(bar, progress * 100))
+        log_to.write('\rUploading: [{}] {:.0f}%'.format(bar, progress * 100))
         log_to.flush()
 
     # first, upload all the smaller files in parallel (if multiple threads are requested)
@@ -101,7 +103,7 @@ def upload(files, session, samples_resource, server_url, threads=DEFAULT_UPLOAD_
 
     upload_threads = []
     for filename, file_size in zip(files, file_sizes):
-        file_obj, filename = _wrap_files(filename)
+        file_obj, filename = _wrap_files(filename, progress_bar)
         if file_size < MULTIPART_SIZE:
             threaded_upload(file_obj, filename, session, samples_resource)
 
@@ -111,13 +113,13 @@ def upload(files, session, samples_resource, server_url, threads=DEFAULT_UPLOAD_
 
     # lastly, upload all the very big files sequentially
     for filename, file_size in zip(files, file_sizes):
-        file_obj, filename = _wrap_files(filename)
+        file_obj, filename = _wrap_files(filename, progress_bar)
         if file_size >= MULTIPART_SIZE:
             upload_large_file(file_obj, filename, session, samples_resource, server_url,
                               threads=threads)
 
     if log_to is not None:
-        log_to.write('Uploading: Complete.')
+        log_to.write('\rUploading: Complete.' + (bar_length + 1) * ' ')
         log_to.flush()
 
 
@@ -145,7 +147,7 @@ def upload_large_file(file_obj, filename, session, samples_resource, server_url,
     config = TransferConfig(max_concurrency=threads)
     try:
         client.upload_fileobj(file_obj, upload_params['s3_bucket'], upload_params['file_id'],
-                              extra_args={'ServerSideEncryption': 'AES256'}, config=config)
+                              ExtraArgs={'ServerSideEncryption': 'AES256'}, Config=config)
     except S3UploadFailedError:
         raise UploadException("Upload of %s has failed. Please contact help@onecodex.com "
                               "if you experience further issues" % filename)
@@ -163,13 +165,10 @@ def upload_file(file_obj, filename, session, samples_resource):
     """
     Uploads a file to the One Codex server directly to the users S3 bucket by self-signing
     """
-    from requests_toolbelt import MultipartEncoder
-
-    file_size = os.fstat(file_obj.fileno()).st_size
     try:
         upload_info = samples_resource.init_upload({
             'filename': filename,
-            'size': file_size,
+            'size': 1,  # because we don't have the actually uploaded size yet b/c we're gziping it
             'upload_type': 'standard'  # This is multipart form data
         })
     except requests.exceptions.HTTPError:
@@ -181,22 +180,19 @@ def upload_file(file_obj, filename, session, samples_resource):
         )
     upload_url = upload_info['upload_url']
 
-    # Coerce to str or MultipartEncoder fails
-    # Need a list to preserve order for S3
-    fields = []
+    # Need a OrderedDict to preserve order for S3
+    multipart_fields = OrderedDict()
     for k, v in upload_info['additional_fields'].items():
-        fields.append((str(k), str(v)))
+        multipart_fields[str(k)] = ('', str(v))
 
-    fields.append(("file", (filename, file_obj, "text/plain")))
-    encoder = MultipartEncoder(fields)
+    multipart_fields['file'] = (filename, file_obj, 'application/x-gzip')
 
+    # try to upload the file, retrying as necessary
     max_retries = 3
     n_retries = 0
     while n_retries < max_retries:
         try:
-            upload_request = session.post(upload_url, data=encoder,
-                                          headers={"Content-Type": encoder.content_type},
-                                          auth={})
+            upload_request = session.post(upload_url, files=multipart_fields, auth={})
             if upload_request.status_code != 201:
                 print("Upload failed. Please contact help@onecodex.com for assistance.")
                 raise SystemExit
@@ -211,6 +207,7 @@ def upload_file(file_obj, filename, session, samples_resource):
                     "for assistance." % filename
                 )
 
+    # TODO: pass file_obj.tell() into the confirmation as the file size
     # Finally, issue a callback
     try:
         samples_resource.confirm_upload({

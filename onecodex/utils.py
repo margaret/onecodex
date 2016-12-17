@@ -31,7 +31,7 @@ OPTION_HELP = {
                  'read-level results. Defaults to original filename in '
                  'the current working directory'),
     'clean': ("Automatically clean up FASTX records during upload. This removes tabs from "
-              "headers and converts U to T. If not passed, these will cause errors."),
+              "headers and converts U to T. If this isn't passed, these will cause errors."),
 }
 
 SUPPORTED_EXTENSIONS = ["fa", "fasta", "fq", "fastq",

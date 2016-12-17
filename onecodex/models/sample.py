@@ -106,7 +106,6 @@ class Samples(OneCodexBase):
         """
         # TODO: either raise/wrap UploadException or just us the new one in lib.samples
         # upload_file(filename, cls._resource._client.session, None, 100)
-
         res = cls._resource
         if isinstance(filename, string_types) or isinstance(filename, tuple):
             filename = [filename]
