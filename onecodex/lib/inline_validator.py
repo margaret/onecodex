@@ -75,7 +75,7 @@ class FASTXNuclIterator():
         self._set_file_obj(file_obj, check_filename=check_filename)
 
         self.unchecked_buffer = b''
-        self.buffer_read_size = 65536
+        self.buffer_read_size = 1024 * 1024 * 16  # 16MB
         self.seq_reader = self._generate_seq_reader(False)
 
         if allow_iupac:
