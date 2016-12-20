@@ -156,24 +156,21 @@ def samples(ctx, samples):
 
 # utilites
 @onecodex.command('upload')
-@click.option('--no-threads', is_flag=True,
-              help=OPTION_HELP['threads'],
-              default=False)
 @click.option('--max-threads', default=4,
               help=OPTION_HELP['max_threads'], metavar='<int:threads>')
 @click.argument('files', nargs=-1, required=False, type=click.Path(exists=True))
 @click.option('--clean', is_flag=True, help=OPTION_HELP['clean'], default=False)
-@click.option('--interleave/--no-interleave', is_flag=True, help=OPTION_HELP['interleave'],
-              default=True)
+@click.option('--do-not-interleave', 'no_interleave', is_flag=True, help=OPTION_HELP['interleave'],
+              default=False)
 @click.option('--prompt/--no-prompt', is_flag=True, help=OPTION_HELP['prompt'], default=False)
 @click.pass_context
-def upload(ctx, files, no_threads, max_threads, clean, interleave, prompt):
+def upload(ctx, files, max_threads, clean, no_interleave, prompt):
     """Upload a FASTA or FASTQ (optionally gzip'd) to One Codex"""
     if len(files) == 0:
         print(ctx.get_help())
         return
 
-    if interleave:
+    if not no_interleave:
         # "intelligently" find paired files and tuple them
         paired_files = []
         single_files = set(files)
@@ -183,35 +180,43 @@ def upload(ctx, files, no_threads, max_threads, clean, interleave, prompt):
             pair = re.sub('[._][Rr]1[._]', lambda x: x.group().replace('1', '2'), filename)
             # we don't necessary need the R2 to have been passed in; we infer it anyways
             if pair != filename and os.path.exists(pair):
-                if prompt:
-                    answer = click.confirm(
-                        'It appears {} and {} are paired. Upload an interleaved sample?'.format(
-                            os.path.basename(filename), os.path.basename(pair)
-                        ),
-                        default='Y'
-                    )
-                    if not answer:
-                        continue
-                elif pair not in single_files:
-                    # if we're not prompting, don't automatically pull in files not in the users
-                    # list
+                if not prompt and pair not in single_files:
+                    # if we're not prompting, don't automatically pull in files
+                    # not in the list the user passed in
                     continue
 
                 paired_files.append((filename, pair))
                 if pair in single_files:
                     single_files.remove(pair)
                 single_files.remove(filename)
-        files = paired_files + list(single_files)
+
+        auto_pair = True
+        if prompt and len(paired_files) > 0:
+            pair_list = ''
+            for p in paired_files:
+                merged_filename = re.sub('[._][Rr]1[._]',
+                                         lambda x: x.group().replace('1', '1/2'),
+                                         os.path.basename(p))
+                pair_list += '\n    ' + merged_filename
+
+            answer = click.confirm(
+                'It appears there are paired files:{}\nInterleave them after upload?'.format(
+                    pair_list
+                ),
+                default='Y'
+            )
+            if not answer:
+                auto_pair = False
+
+        if auto_pair:
+            files = paired_files + list(single_files)
 
     if not clean:
         warnings.filterwarnings('error', category=ValidationWarning)
 
     try:
         # do the uploading
-        if not no_threads:
-            ctx.obj['API'].Samples.upload(files, threads=max_threads)
-        else:
-            ctx.obj['API'].Samples.upload(files, threads=1)
+        ctx.obj['API'].Samples.upload(files, threads=max_threads)
     except ValidationWarning as e:
         sys.stderr.write('\nERROR: {}. {}'.format(
             e, 'Running with the --clean flag will suppress this error.'

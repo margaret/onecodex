@@ -177,7 +177,7 @@ def test_standard_uploads(runner, upload_mocks, files, threads):
     with runner.isolated_filesystem():
         args = ['--api-key', '01234567890123456789012345678901', 'upload']
         if not threads:
-            args.append('--no-threads')
+            args += ['--max-threads', '1']
         for f in files:
             args.append(f)
             with open(f, mode='w') as f_out:
