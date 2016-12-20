@@ -6,6 +6,7 @@ from __future__ import print_function, division
 
 from collections import OrderedDict
 from math import floor
+from multiprocessing import Value
 import os
 import re
 from threading import BoundedSemaphore, Thread
@@ -53,7 +54,6 @@ def upload(files, session, samples_resource, server_url, threads=DEFAULT_UPLOAD_
     downstream upload functions. Also, wraps the files with a streaming validator to ensure they
     work.
     """
-    threads=1  # FIXME
     file_sizes = []
     for filename in files:
         if isinstance(filename, tuple):
@@ -71,7 +71,8 @@ def upload(files, session, samples_resource, server_url, threads=DEFAULT_UPLOAD_
     overall_size = sum(file_sizes)
     transferred_sizes = {name: 0 for name in files}
 
-    def progress_bar(filename, bytes_transferred):
+    # TODO: we should use click.progressbar?
+    def progress_bar_display(filename, bytes_transferred):
         prev_progress = sum(transferred_sizes.values()) / overall_size
         transferred_sizes[filename] = bytes_transferred
         progress = sum(transferred_sizes.values()) / overall_size
@@ -83,19 +84,29 @@ def upload(files, session, samples_resource, server_url, threads=DEFAULT_UPLOAD_
         log_to.write('\rUploading: [{}] {:.0f}%'.format(bar, progress * 100))
         log_to.flush()
 
+    progress_bar = None if log_to is None else progress_bar_display
+
     # first, upload all the smaller files in parallel (if multiple threads are requested)
     if threads > 1:
+        import ctypes
+        thread_error = Value(ctypes.c_char_p, '')
         semaphore = BoundedSemaphore(threads)
         upload_threads = []
 
         def threaded_upload(*args):
             def _wrapped(*wrapped_args):
                 semaphore.acquire()
-                upload_file(*wrapped_args)
+                try:
+                    upload_file(*wrapped_args[:-1])
+                except Exception as e:
+                    # handle inside the thread to prevent the exception message from leaking out
+                    wrapped_args[-1].value = '{}'.format(e)
+                    raise SystemExit
                 semaphore.release()
 
-            # TODO: catch exceptions in the thread? or maybe they *are* bubbling out
-            thread = Thread(target=_wrapped, args=args)
+            # the thread error message must be the last parameter
+            thread = Thread(target=_wrapped, args=args + (thread_error, ))
+            thread.daemon = True
             thread.start()
             upload_threads.append(thread)
     else:
@@ -105,25 +116,34 @@ def upload(files, session, samples_resource, server_url, threads=DEFAULT_UPLOAD_
     for filename, file_size in zip(files, file_sizes):
         file_obj, filename = _wrap_files(filename, progress_bar)
         if file_size < MULTIPART_SIZE:
-            threaded_upload(file_obj, filename, session, samples_resource)
+            threaded_upload(file_obj, filename, session, samples_resource, log_to)
 
     if threads > 1:
-        for thread in upload_threads:
-            thread.join()
+        # we need to do this funky wait loop to ensure threads get killed by ctrl-c
+        while True:
+            for thread in upload_threads:
+                # hopefully no one has a <5Gb file that takes longer than a week to upload
+                thread.join(604800)
+            if all(not thread.is_alive() for thread in upload_threads):
+                break
+
+        if thread_error.value != '':
+            raise UploadException(thread_error.value)
 
     # lastly, upload all the very big files sequentially
     for filename, file_size in zip(files, file_sizes):
         file_obj, filename = _wrap_files(filename, progress_bar)
         if file_size >= MULTIPART_SIZE:
             upload_large_file(file_obj, filename, session, samples_resource, server_url,
-                              threads=threads)
+                              threads=threads, log_to=log_to)
 
     if log_to is not None:
-        log_to.write('\rUploading: Complete.' + (bar_length + 1) * ' ')
+        log_to.write('\rUploading: All complete.' + (bar_length - 3) * ' ')
         log_to.flush()
 
 
-def upload_large_file(file_obj, filename, session, samples_resource, server_url, threads=10):
+def upload_large_file(file_obj, filename, session, samples_resource, server_url, threads=10,
+                      log_to=None):
     """
     Uploads a file to the One Codex server via an intermediate S3 bucket (and handles files >5Gb)
     """
@@ -159,9 +179,12 @@ def upload_large_file(file_obj, filename, session, samples_resource, server_url,
     if req.status_code != 200:
         raise UploadException("Upload confirmation of %s has failed. Please contact "
                               "help@onecodex.com if you experience further issues" % filename)
+    if log_to is not None:
+        log_to.write('\rUploading: {} finished.\n'.format(filename))
+        log_to.flush()
 
 
-def upload_file(file_obj, filename, session, samples_resource):
+def upload_file(file_obj, filename, session, samples_resource, log_to=None):
     """
     Uploads a file to the One Codex server directly to the users S3 bucket by self-signing
     """
@@ -207,7 +230,6 @@ def upload_file(file_obj, filename, session, samples_resource):
                     "for assistance." % filename
                 )
 
-    # TODO: pass file_obj.tell() into the confirmation as the file size
     # Finally, issue a callback
     try:
         samples_resource.confirm_upload({
@@ -216,3 +238,9 @@ def upload_file(file_obj, filename, session, samples_resource):
         })
     except requests.exceptions.HTTPError:
         raise UploadException('Failed to upload: %s' % filename)
+
+    if log_to is not None:
+        log_to.write('\rUploading: {} finished as sample {}.\n'.format(
+            filename, upload_info['sample_id']
+        ))
+        log_to.flush()

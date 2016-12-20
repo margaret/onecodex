@@ -63,7 +63,6 @@ class GzipBuffer(object):
         self._gzip.close()
 
 
-WHITESPACE = string.whitespace.encode()
 OTHER_BASES = set(b'UuXx')
 if hasattr(bytes, 'maketrans'):
     OTHER_BASE_TRANS = bytes.maketrans(b'UuXx', b'TtNn')
@@ -181,10 +180,6 @@ class FASTXNuclIterator():
             chars = ','.join(set_seq.difference(self.valid_bases))
             raise ValidationError('{} contains non-nucleic acid characters: {}'.format(self.name,
                                                                                        chars))
-        if set_seq.intersection(WHITESPACE):
-            # this seems like a good idea for multiline FASTAs... but what if it isn't?
-            self._warn_once('{} has whitespace in sequences; autoreplacing'.format(self.name))
-            seq = seq.translate(None, WHITESPACE)
         if set_seq.intersection(OTHER_BASES):
             self._warn_once('Translating other bases in {} (X->N,U->T)'.format(self.name))
             seq = seq.translate(OTHER_BASE_TRANS)
@@ -199,6 +194,10 @@ class FASTXNuclIterator():
                 # switch to a different regex to parse without a next record
                 eof = True
                 self.seq_reader = self._generate_seq_reader(True)
+                # automatically remove newlines from the end of the file (they get added back in
+                # by the formatting operation below, but otherwise they mess up the regex and you
+                # end up with two terminating \n's)
+                self.unchecked_buffer = self.unchecked_buffer.rstrip('\n')
             else:
                 self.unchecked_buffer += new_data
 

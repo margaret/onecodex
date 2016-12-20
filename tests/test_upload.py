@@ -20,6 +20,11 @@ def test_paired_validator():
     outfile = FASTXTranslator(fakefile, recompress=False)
     assert outfile.read() == b'>test\nACGT\n'
 
+    # test a single file without an ending newline
+    fakefile = BytesIO(b'>test\nACGT')
+    outfile = FASTXTranslator(fakefile, recompress=False)
+    assert outfile.read() == b'>test\nACGT\n'
+
     # test paired files
     fakefile = BytesIO(b'>test\nACGT\n')
     fakefile2 = BytesIO(b'>test2\nTGCA\n')

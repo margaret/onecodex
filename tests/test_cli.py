@@ -199,18 +199,9 @@ def test_empty_upload(runner, upload_mocks):
         assert result.exit_code != 0
 
 
-@pytest.mark.parametrize('awscli_installed,expected_code,expected_messages', [
-    (False, 1, ['You must install the awscli package for files >5GB in size']),
-    (True, 0, ['Starting large (>5GB) file upload. Please be patient while the file transfers...',
-               'Successfully uploaded: large.fa']),
-])
-def test_large_uploads(runner, upload_mocks, monkeypatch,
-                       awscli_installed, expected_code, expected_messages):
-    # A bunch of imports for AWS CLI mocking
-    import subprocess
-    import sys
-    from testfixtures.popen import MockPopen
-    from mock import Mock
+def test_large_uploads(runner, upload_mocks, monkeypatch):
+    # a lot of funky mocking
+    import mock
 
     def mockfilesize(path):
         if 'large' in path:
@@ -220,15 +211,6 @@ def test_large_uploads(runner, upload_mocks, monkeypatch,
 
     monkeypatch.setattr(os.path, 'getsize', mockfilesize)
 
-    if awscli_installed:
-        mockpopen = MockPopen()
-        cmd = ("AWS_ACCESS_KEY_ID=aws_key AWS_SECRET_ACCESS_KEY=aws_secret_key "
-               "aws s3 cp large.fa s3://onecodex-multipart-uploads-encrypted/abcdef0987654321 "
-               "--sse")
-        mockpopen.set_command(cmd)
-        monkeypatch.setattr(subprocess, 'Popen', mockpopen)
-        sys.modules['awscli'] = Mock()
-
     with runner.isolated_filesystem():
         big_file = "large.fa"
         with open(big_file, mode='w') as f:
@@ -236,7 +218,9 @@ def test_large_uploads(runner, upload_mocks, monkeypatch,
             f.write(SEQUENCE)
 
         args = ['--api-key', '01234567890123456789012345678901', 'upload', big_file]
-        result = runner.invoke(Cli, args)
-        assert result.exit_code == expected_code
-        for e in expected_messages:
-            assert e in result.output
+        with mock.patch('boto3.client') as mp:
+            result = runner.invoke(Cli, args)
+            assert mp.call_count > 0
+
+        assert result.exit_code == 0
+        assert 'All complete.' in result.output
