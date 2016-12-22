@@ -74,29 +74,6 @@ def mock_requests(mock_json):
         yield
 
 
-# TODO: Consider deleting in favor of context manager as above
-def mock_requests_decorator(mock_json):
-    def decorator(func):
-        def wrapper(*args, **kwargs):
-            with responses.mock as rsps:
-                for mock_url, mock_data in mock_json.items():
-                    method, content_type, url = mock_url.split(':', 2)
-                    if not content_type:
-                        content_type = 'application/json'
-                    if callable(mock_data):
-                        rsps.add_callback(method, re.compile('http://[^/]+/' + url + '(\?.*)?$'),
-                                          callback=mock_data,
-                                          content_type=content_type)
-                    else:
-                        rsps.add(method, re.compile('http://[^/]+/' + url + '(\?.*)?$'),
-                                 body=mock_data,
-                                 content_type=content_type)
-                func(*args, **kwargs)
-                assert len(responses.calls) > 0
-        return wrapper
-    return decorator
-
-
 def rs(path):
     return resource_string(__name__, path).decode('utf-8')
 
@@ -202,7 +179,7 @@ def api_data():
 @pytest.fixture(scope='function')
 def upload_mocks():
     def upload_callback(request):
-        return (201, {'location': 'on-aws'}, {})
+        return (201, {'location': 'on-aws'}, '')
 
     json_data = {
         'POST:multipart/form-data:fake_aws_callback': upload_callback,

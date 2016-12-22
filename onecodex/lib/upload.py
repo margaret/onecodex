@@ -12,6 +12,7 @@ import re
 from threading import BoundedSemaphore, Thread
 
 import requests
+from requests_toolbelt import MultipartEncoder
 
 from onecodex.lib.inline_validator import FASTXTranslator
 from onecodex.exceptions import UploadException
@@ -21,19 +22,15 @@ MULTIPART_SIZE = 5 * 1000 * 1000 * 1000
 DEFAULT_UPLOAD_THREADS = 4
 
 
-def _wrap_files(filename, logger=None):
-    """
-    A little helper to wrap a sequencing file (or join and wrap R1/R2 pairs) and return
-    a merged file_object and a "new" filename for the output
-    """
+def _file_stats(filename):
     if isinstance(filename, tuple):
-        file_obj = FASTXTranslator(open(filename[0], 'rb'), pair=open(filename[1], 'rb'),
-                                   progress_callback=logger)
+        assert len(filename) == 2
+        file_size = sum(os.path.getsize(f) for f in filename)
         # strip out the _R1_/etc chunk from the first filename if this is a paired upload
         # and make that the filename
         filename = re.sub('[._][Rr][12][._]', '', filename[0])
     else:
-        file_obj = FASTXTranslator(open(filename, 'rb'), progress_callback=logger)
+        file_size = os.path.getsize(filename)
 
     new_filename, ext = os.path.splitext(os.path.basename(filename))
     if ext in {'.gz', '.gzip', '.bz', '.bz2', '.bzip'}:
@@ -44,7 +41,21 @@ def _wrap_files(filename, logger=None):
     elif ext in {'.fq', '.fastq'}:
         ext = '.fq'
 
-    return file_obj, new_filename + ext + '.gz'
+    return new_filename + ext + '.gz', file_size
+
+
+def _wrap_files(filename, logger=None):
+    """
+    A little helper to wrap a sequencing file (or join and wrap R1/R2 pairs) and return
+    a merged file_object and a "new" filename for the output
+    """
+    if isinstance(filename, tuple):
+        file_obj = FASTXTranslator(open(filename[0], 'rb'), pair=open(filename[1], 'rb'),
+                                   progress_callback=logger)
+    else:
+        file_obj = FASTXTranslator(open(filename, 'rb'), progress_callback=logger)
+
+    return file_obj
 
 
 def upload(files, session, samples_resource, server_url, threads=DEFAULT_UPLOAD_THREADS,
@@ -54,13 +65,12 @@ def upload(files, session, samples_resource, server_url, threads=DEFAULT_UPLOAD_
     downstream upload functions. Also, wraps the files with a streaming validator to ensure they
     work.
     """
+    filenames = []
     file_sizes = []
-    for filename in files:
-        if isinstance(filename, tuple):
-            assert len(filename) == 2
-            file_sizes.append(sum(os.path.getsize(f) for f in filename))
-        else:
-            file_sizes.append(os.path.getsize(filename))
+    for file_path in files:
+        normalized_filename, file_size = _file_stats(file_path)
+        filenames.append(normalized_filename)
+        file_sizes.append(file_size)
 
     # set up the logging
     bar_length = 20
@@ -69,12 +79,12 @@ def upload(files, session, samples_resource, server_url, threads=DEFAULT_UPLOAD_
         log_to.flush()
 
     overall_size = sum(file_sizes)
-    transferred_sizes = {name: 0 for name in files}
+    transferred_sizes = {filename: 0 for filename in filenames}
 
     # TODO: we should use click.progressbar?
-    def progress_bar_display(filename, bytes_transferred):
+    def progress_bar_display(file_id, bytes_transferred):
         prev_progress = sum(transferred_sizes.values()) / overall_size
-        transferred_sizes[filename] = bytes_transferred
+        transferred_sizes[file_id] = bytes_transferred
         progress = sum(transferred_sizes.values()) / overall_size
         if floor(100 * prev_progress) == floor(100 * progress):
             return
@@ -89,7 +99,7 @@ def upload(files, session, samples_resource, server_url, threads=DEFAULT_UPLOAD_
     # first, upload all the smaller files in parallel (if multiple threads are requested)
     if threads > 1:
         import ctypes
-        thread_error = Value(ctypes.c_char_p, '')
+        thread_error = Value(ctypes.c_wchar_p, '')
         semaphore = BoundedSemaphore(threads)
         upload_threads = []
 
@@ -113,10 +123,12 @@ def upload(files, session, samples_resource, server_url, threads=DEFAULT_UPLOAD_
         threaded_upload = upload_file
 
     upload_threads = []
-    for filename, file_size in zip(files, file_sizes):
-        file_obj, filename = _wrap_files(filename, progress_bar)
+    uploading_files = []
+    for file_path, filename, file_size in zip(files, filenames, file_sizes):
         if file_size < MULTIPART_SIZE:
+            file_obj = _wrap_files(file_path, progress_bar)
             threaded_upload(file_obj, filename, session, samples_resource, log_to)
+            uploading_files.append(file_obj)
 
     if threads > 1:
         # we need to do this funky wait loop to ensure threads get killed by ctrl-c
@@ -126,16 +138,19 @@ def upload(files, session, samples_resource, server_url, threads=DEFAULT_UPLOAD_
                 thread.join(604800)
             if all(not thread.is_alive() for thread in upload_threads):
                 break
-
         if thread_error.value != '':
             raise UploadException(thread_error.value)
 
+    for file_obj in uploading_files:
+        file_obj.close()
+
     # lastly, upload all the very big files sequentially
-    for filename, file_size in zip(files, file_sizes):
-        file_obj, filename = _wrap_files(filename, progress_bar)
+    for file_path, filename, file_size in zip(files, filenames, file_sizes):
         if file_size >= MULTIPART_SIZE:
+            file_obj = _wrap_files(file_path, progress_bar)
             upload_large_file(file_obj, filename, session, samples_resource, server_url,
                               threads=threads, log_to=log_to)
+            file_obj.close()
 
     if log_to is not None:
         log_to.write('\rUploading: All complete.' + (bar_length - 3) * ' ')
@@ -206,16 +221,17 @@ def upload_file(file_obj, filename, session, samples_resource, log_to=None):
     # Need a OrderedDict to preserve order for S3
     multipart_fields = OrderedDict()
     for k, v in upload_info['additional_fields'].items():
-        multipart_fields[str(k)] = ('', str(v))
+        multipart_fields[str(k)] = str(v)
 
     multipart_fields['file'] = (filename, file_obj, 'application/x-gzip')
+    encoder = MultipartEncoder(multipart_fields)
 
     # try to upload the file, retrying as necessary
     max_retries = 3
     n_retries = 0
     while n_retries < max_retries:
         try:
-            upload_request = session.post(upload_url, files=multipart_fields, auth={})
+            upload_request = session.post(upload_url, data=encoder, auth={})
             if upload_request.status_code != 201:
                 print("Upload failed. Please contact help@onecodex.com for assistance.")
                 raise SystemExit

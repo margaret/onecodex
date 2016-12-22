@@ -90,11 +90,12 @@ class FASTXNuclIterator():
         else:
             self.name = 'File'
 
+        self.total_size = None
         try:
-            total_size = os.fstat(file_obj.fileno()).st_size
-            if total_size < 70:
+            self.total_size = os.fstat(file_obj.fileno()).st_size
+            if self.total_size < 70:
                 raise ValidationError('{} is too small to be analyzed: {} bytes'.format(
-                    self.name, total_size
+                    self.name, self.total_size
                 ))
         except IOError:
             pass
@@ -150,16 +151,16 @@ class FASTXNuclIterator():
             seq_reader = re.compile(b"""
                 (?P<id>[^\\n]+)\\n  # the identifier line
                 (?P<seq>[^>]+)  # the sequence
-                {}
-            """.format('' if last else '(?:\\n>)'), re.VERBOSE)
+                %s
+            """ % (b'' if last else b'(?:\\n>)'), re.VERBOSE)
         elif self.file_type == 'FASTQ':
             seq_reader = re.compile(b"""
                 (?P<id>[^\\n]+)\\n
                 (?P<seq>[^\\n]+)\\n
                 \+(?P<id2>[^\\n]*)\\n
                 (?P<qual>[^\\n]+)
-                {}
-            """.format('' if last else '(?:\\n@)'), re.DOTALL + re.VERBOSE)
+                %s
+            """ % (b'' if last else b'(?:\\n@)'), re.DOTALL + re.VERBOSE)
         return seq_reader
 
     def _warn_once(self, message):
@@ -197,7 +198,7 @@ class FASTXNuclIterator():
                 # automatically remove newlines from the end of the file (they get added back in
                 # by the formatting operation below, but otherwise they mess up the regex and you
                 # end up with two terminating \n's)
-                self.unchecked_buffer = self.unchecked_buffer.rstrip('\n')
+                self.unchecked_buffer = self.unchecked_buffer.rstrip(b'\n')
             else:
                 self.unchecked_buffer += new_data
 
@@ -211,17 +212,30 @@ class FASTXNuclIterator():
                 if self.as_raw:
                     yield (seq_id, seq, qual)
                 elif self.file_type == 'FASTA':
-                    yield '>{}\n{}\n'.format(seq_id, seq)
+                    yield b'>%b\n%b\n' % (seq_id, seq)
                 elif self.file_type == 'FASTQ':
-                    yield '@{}\n{}\n+\n{}\n'.format(seq_id, seq, qual)
+                    yield b'@%b\n%b\n+\n%b\n' % (seq_id, seq, qual)
                 end = match.end()
 
             self.processed_size += end
             self.unchecked_buffer = self.unchecked_buffer[end:]
 
+    @property
+    def bytes_left(self):
+        if self.total_size is not None:
+            return self.total_size - self.processed_size
+
+    def close(self):
+        # did we read everything?
+        assert self.bytes_left == 0
+
+        # actually close the file
+        self.file_obj.close()
+
 
 class FASTXTranslator():
-    def __init__(self, file_obj, pair=None, recompress=True, progress_callback=None, **kwargs):
+    def __init__(self, file_obj, pair=None, recompress=True, total_size=None,
+                 progress_callback=None, **kwargs):
         # detect if gzipped/bzipped and uncompress transparently
         self.reads = FASTXNuclIterator(file_obj, **kwargs)
         self.reads_iter = iter(self.reads)
@@ -241,6 +255,7 @@ class FASTXTranslator():
 
         self.progress_callback = progress_callback
         self.total_written = 0
+        self.total_size = total_size
 
     def read(self, n=-1):
         if self.reads_pair is None:
@@ -281,10 +296,7 @@ class FASTXTranslator():
                     raise ValidationError('Paired read files are not the same length')
 
                 if self.progress_callback is not None:
-                    if self.reads_pair is not None:
-                        bytes_uploaded = self.reads.processed_size + self.reads_pair.processed_size
-                    else:
-                        bytes_uploaded = self.reads.processed_size
+                    bytes_uploaded = self.reads.processed_size + self.reads_pair.processed_size
                     self.progress_callback(self.reads.name, bytes_uploaded)
 
         return self.checked_buffer.read(n)
@@ -292,8 +304,18 @@ class FASTXTranslator():
     def readall(self):
         return self.read()
 
-    def tell(self):
-        return self.total_written
+    @property
+    def len(self):
+        # to fool requests_toolbelt into uploading properly
+        bytes_left = self.reads.bytes_left
+        if self.reads_pair is not None:
+            bytes_left += self.reads_pair.bytes_left
+        return bytes_left
 
     def write(self, b):
         raise NotImplementedError()
+
+    def close(self):
+        self.reads.close()
+        if self.reads_pair is not None:
+            self.reads_pair.close()
