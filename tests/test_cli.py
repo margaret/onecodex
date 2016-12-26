@@ -15,12 +15,6 @@ from onecodex import Cli
 DATE_FORMAT = '%Y-%m-%d %H:%M'
 
 
-@pytest.fixture(scope='function')
-def runner():
-    runner = CliRunner(env={"ONE_CODEX_API_BASE": "http://localhost:3000"})
-    return runner
-
-
 def test_cli_help(runner):
     for args in [None, '-h', '--help']:
         command = [args] if args is not None else None
@@ -218,9 +212,17 @@ def test_large_uploads(runner, upload_mocks, monkeypatch):
             f.write(SEQUENCE)
 
         args = ['--api-key', '01234567890123456789012345678901', 'upload', big_file]
-        with mock.patch('boto3.client') as mp:
+
+        def side_effect(*args, **kwargs):
+            """Side effect to ensure FASTXValidator gets properly read
+            """
+            args[0].read()
+            return None
+
+        with mock.patch('onecodex.lib.upload.upload_large_file') as mp:
+            mp.side_effect = side_effect
             result = runner.invoke(Cli, args)
-            assert mp.call_count > 0
+            assert mp.call_count == 1
 
         assert result.exit_code == 0
         assert 'All complete.' in result.output

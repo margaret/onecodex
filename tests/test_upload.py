@@ -43,6 +43,31 @@ def test_paired_validator():
     assert outdata.endswith(b'\x02\xff\xb3+I-.\xe1rtv\x0f\xe1\x02\x00\xf3\x1dK\xc4\x0b\x00\x00\x00')
 
 
+@pytest.mark.parametrize('n_newlines', [0, 1, 2, 3])
+def test_validator_newlines(runner, n_newlines):
+    # Test that we properly parse files with 0, 1, or more than 1 newline at the end
+    # including our n bytes remaining calculations
+    # (Use runner for isolated filesystem only here)
+    content = (b'>test\nACGTACGTAGCTGACACGTACGTAGCTGACACGTACGTAGCTGACACGTACGTAGCTGAC' +
+               'ACGTACGTAGCTGACACGTACGTAGCTGACACGTACGTAGCTGACACGTACGTAGCTGAC' +
+               '\n' * n_newlines)
+    fakefile = BytesIO(content)
+    outfile = FASTXTranslator(fakefile, recompress=False)
+    if n_newlines == 0:
+        assert content[-1] == 'C'
+    else:
+        assert content[(-1 * n_newlines):] == '\n' * n_newlines
+    assert outfile.read().rstrip('\n') == content.rstrip('\n')
+    assert outfile.reads.bytes_left == 0
+
+    with runner.isolated_filesystem():
+        with open('myfasta.fa', mode='w') as f:
+            f.write(content)
+        outfile2 = FASTXTranslator(open('myfasta.fa'), recompress=False)
+        assert outfile2.read().rstrip('\n') == content.rstrip('\n')
+        assert outfile2.reads.bytes_left == 0
+
+
 @pytest.mark.parametrize('file_list,n_small,n_big', [
     (['file.1000.fa', 'file.5e10.fa'], 1, 1),
     ([('file.3e10.R1.fa', 'file.3e10.R2.fa')], 0, 1),
@@ -51,7 +76,7 @@ def test_paired_validator():
 def test_upload_lots_of_files(file_list, n_small, n_big):
     session, samples_resource, server_url = None, None, None
 
-    fake_size = lambda filename: int(float(filename.split('.')[1]))
+    fake_size = lambda filename: int(float(filename.split('.')[1]))  # noqa
 
     uf = 'onecodex.lib.upload.upload_file'
     ulf = 'onecodex.lib.upload.upload_large_file'
@@ -93,7 +118,7 @@ class FakeSamplesResource():
 
 class FakeSession():
     def post(self, url, **kwargs):
-        resp = lambda: None
+        resp = lambda: None  # noqa
         resp.status_code = 201 if 'auth' in kwargs else 200
         return resp
 

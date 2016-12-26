@@ -1,6 +1,7 @@
 import bz2
 from collections import deque
 import gzip
+from io import BytesIO
 import os
 import re
 import string
@@ -73,7 +74,6 @@ else:
 class FASTXNuclIterator():
     def __init__(self, file_obj, allow_iupac=False, check_filename=True, as_raw=False):
         self._set_file_obj(file_obj, check_filename=check_filename)
-
         self.unchecked_buffer = b''
         self.buffer_read_size = 1024 * 1024 * 16  # 16MB
         self.seq_reader = self._generate_seq_reader(False)
@@ -90,17 +90,8 @@ class FASTXNuclIterator():
         else:
             self.name = 'File'
 
-        self.total_size = None
-        try:
-            self.total_size = os.fstat(file_obj.fileno()).st_size
-            if self.total_size < 70:
-                raise ValidationError('{} is too small to be analyzed: {} bytes'.format(
-                    self.name, self.total_size
-                ))
-        except IOError:
-            pass
-        self.processed_size = 0
-
+        self._set_total_size()
+        self.processed_size = self.file_obj.tell()
         self.warnings = set()
 
     def _set_file_obj(self, file_obj, check_filename=True):
@@ -143,6 +134,21 @@ class FASTXNuclIterator():
             raise ValidationError('{} is not valid FASTX'.format(self.name))
 
         self.file_obj = file_obj
+
+    def _set_total_size(self):
+        if isinstance(self.file_obj, BytesIO):
+            self.file_obj.seek(0)
+            self.total_size = len(self.file_obj.read())
+            self.file_obj.seek(1)
+        else:
+            try:
+                self.total_size = os.fstat(self.file_obj.fileno()).st_size
+                if self.total_size < 70:
+                    raise ValidationError('{} is too small to be analyzed: {} bytes'.format(
+                        self.name, self.total_size
+                    ))
+            except IOError:
+                pass
 
     def _generate_seq_reader(self, last=False):
         # the last record doesn't have a @/> on the next line so we omit that
@@ -198,7 +204,10 @@ class FASTXNuclIterator():
                 # automatically remove newlines from the end of the file (they get added back in
                 # by the formatting operation below, but otherwise they mess up the regex and you
                 # end up with two terminating \n's)
+                old_len = len(self.unchecked_buffer)
                 self.unchecked_buffer = self.unchecked_buffer.rstrip(b'\n')
+                newlines_stripped = old_len - len(self.unchecked_buffer)
+                self.processed_size += newlines_stripped
             else:
                 self.unchecked_buffer += new_data
 
@@ -212,9 +221,9 @@ class FASTXNuclIterator():
                 if self.as_raw:
                     yield (seq_id, seq, qual)
                 elif self.file_type == 'FASTA':
-                    yield b'>%b\n%b\n' % (seq_id, seq)
+                    yield b'>{}\n{}\n'.format(seq_id, seq)
                 elif self.file_type == 'FASTQ':
-                    yield b'@%b\n%b\n+\n%b\n' % (seq_id, seq, qual)
+                    yield b'@{}\n{}\n+\n{}\n'.format(seq_id, seq, qual)
                 end = match.end()
 
             self.processed_size += end
@@ -227,14 +236,16 @@ class FASTXNuclIterator():
 
     def close(self):
         # did we read everything?
-        assert self.bytes_left == 0
+        if self.bytes_left != 0:
+            raise ValidationError('Failed to properly read file: {}/{} bytes unread.'.format(
+                self.bytes_left, self.total_size))
 
         # actually close the file
         self.file_obj.close()
 
 
 class FASTXTranslator():
-    def __init__(self, file_obj, pair=None, recompress=True, total_size=None,
+    def __init__(self, file_obj, pair=None, recompress=True,
                  progress_callback=None, **kwargs):
         # detect if gzipped/bzipped and uncompress transparently
         self.reads = FASTXNuclIterator(file_obj, **kwargs)
@@ -255,7 +266,6 @@ class FASTXTranslator():
 
         self.progress_callback = progress_callback
         self.total_written = 0
-        self.total_size = total_size
 
     def read(self, n=-1):
         if self.reads_pair is None:

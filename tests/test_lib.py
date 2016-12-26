@@ -1,7 +1,6 @@
 """
 Unit tests for One Codex
 """
-from pkg_resources import resource_filename
 from onecodex.lib.auth import check_version, fetch_api_key_from_uname
 from onecodex.version import __version__
 

@@ -1,4 +1,5 @@
 from __future__ import print_function
+from click.testing import CliRunner
 from contextlib import contextmanager
 import json
 import os
@@ -9,6 +10,7 @@ import requests
 import responses
 
 from onecodex import Api
+from onecodex.lib.inline_validator import FASTXTranslator
 
 
 def intercept(func, log=False, dump=None):
@@ -179,6 +181,10 @@ def api_data():
 @pytest.fixture(scope='function')
 def upload_mocks():
     def upload_callback(request):
+        # Get and read the streaming iterator so it's empty
+        streaming_iterator = request.body.fields['file'][1]
+        streaming_iterator.read()
+        assert isinstance(streaming_iterator, FASTXTranslator)
         return (201, {'location': 'on-aws'}, '')
 
     json_data = {
@@ -220,6 +226,12 @@ def ocx():
         ocx = Api(api_key='1eab4217d30d42849dbde0cd1bb94e39',
                   base_url='http://localhost:3000', cache_schema=False)
         return ocx
+
+
+@pytest.fixture(scope='function')
+def runner():
+    runner = CliRunner(env={"ONE_CODEX_API_BASE": "http://localhost:3000"})
+    return runner
 
 
 # CLI / FILE SYSTEM FIXTURE
