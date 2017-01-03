@@ -9,6 +9,8 @@ import warnings
 
 from onecodex.exceptions import ValidationError, ValidationWarning
 
+GZIP_COMPRESSION_LEVEL = 5
+
 
 # buffer code from
 # http://stackoverflow.com/questions/2192529/python-creating-a-streaming-gzipd-file-like/2193508
@@ -49,26 +51,33 @@ class Buffer(object):
 class GzipBuffer(object):
     def __init__(self):
         self._buf = Buffer()
-        self._gzip = gzip.GzipFile(None, mode='wb', fileobj=self._buf)
+        self._gzip = gzip.GzipFile(None, mode='wb', fileobj=self._buf,
+                                   compresslevel=GZIP_COMPRESSION_LEVEL)
 
     def __len__(self):
         return len(self._buf)
 
+    def write(self, s):
+        self._gzip.write(s)
+
     def read(self, size=-1):
         return self._buf.read(size)
 
-    def write(self, s):
-        self._gzip.write(s)
+    def flush(self):
+        pass
 
     def close(self):
         self._gzip.close()
 
 
-OTHER_BASES = set(b'UuXx')
+# this checks and translates all valid IUPAC nucleotide codes into the core 4+n (ACGTN)
+OTHER_BASES = re.compile(b'[BDHIKMRSUVWXYbdhikmrsuvwxy]')
 if hasattr(bytes, 'maketrans'):
-    OTHER_BASE_TRANS = bytes.maketrans(b'UuXx', b'TtNn')
+    OTHER_BASE_TRANS = bytes.maketrans(b'BDHIKMRSUVWXYbdhikmrsuvwxy',
+                                       b'NNNNNNNNTNNNNnnnnnnnntnnnn')
 else:
-    OTHER_BASE_TRANS = string.maketrans(b'UuXx', b'TtNn')
+    OTHER_BASE_TRANS = string.maketrans(b'BDHIKMRSUVWXYbdhikmrsuvwxy',
+                                        b'NNNNNNNNTNNNNnnnnnnnntnnnn')
 
 
 class FASTXNuclIterator():
@@ -79,10 +88,9 @@ class FASTXNuclIterator():
         self.seq_reader = self._generate_seq_reader(False)
 
         if allow_iupac:
-            self.valid_bases = set(b'ABCDGHIKMNRSTUVWXYabcdghikmnrstuvwxy' +
-                                   string.whitespace.encode())
+            self.valid_bases = re.compile(b'[^ABCDGHIKMNRSTUVWXYabcdghikmnrstuvwxy\s]')
         else:
-            self.valid_bases = set(b'ACGTNUXacgtnux' + string.whitespace.encode())
+            self.valid_bases = re.compile(b'[^ACGTNUXacgtnux\s]')
         self.as_raw = as_raw
 
         if hasattr(file_obj, 'name'):
@@ -178,19 +186,19 @@ class FASTXNuclIterator():
     def _validate_record(self, rec):
         # TODO: if there are quality scores, make sure they're in range
         # FIXME: fail if reads aren't interleaved and an override flag isn't passed?
-        seq_id, seq, qual = rec['id'], rec['seq'], rec.get('qual')
-        if b'\t' in seq_id:
+        seq_id, seq, seq_id2, qual = rec['id'], rec['seq'], rec.get('id2', b''), rec.get('qual')
+        if b'\t' in seq_id or b'\t' in seq_id2:
             self._warn_once('{} can not have tabs in headers; autoreplacing'.format(self.name))
             seq_id = seq_id.replace('\t', '|')
-        set_seq = set(seq)
-        if not set_seq.issubset(self.valid_bases):
-            chars = ','.join(set_seq.difference(self.valid_bases))
+
+        if self.valid_bases.search(seq) is not None:
+            chars = ','.join(set(self.valid_bases.findall(seq)))
             raise ValidationError('{} contains non-nucleic acid characters: {}'.format(self.name,
                                                                                        chars))
-        if set_seq.intersection(OTHER_BASES):
+        if OTHER_BASES.search(seq) is not None:
             self._warn_once('Translating other bases in {} (X->N,U->T)'.format(self.name))
             seq = seq.translate(OTHER_BASE_TRANS)
-        return seq_id, seq, qual
+        return seq_id, seq, seq_id2, qual
 
     def __iter__(self):
         eof = False
@@ -217,13 +225,13 @@ class FASTXNuclIterator():
                 if match is None:
                     break
                 rec = match.groupdict()
-                seq_id, seq, qual = self._validate_record(rec)
+                seq_id, seq, seq_id2, qual = self._validate_record(rec)
                 if self.as_raw:
                     yield (seq_id, seq, qual)
                 elif self.file_type == 'FASTA':
                     yield b'>{}\n{}\n'.format(seq_id, seq)
                 elif self.file_type == 'FASTQ':
-                    yield b'@{}\n{}\n+\n{}\n'.format(seq_id, seq, qual)
+                    yield b'@{}\n{}\n+{}\n{}\n'.format(seq_id, seq, seq_id2, qual)
                 end = match.end()
 
             self.processed_size += end

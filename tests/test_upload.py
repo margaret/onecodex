@@ -143,3 +143,15 @@ def test_upload_small_file():
 
     upload_file(file_obj, 'test.fa', session, samples_resource)
     file_obj.close()
+
+
+def test_wrapper_speed():
+    # to check serialization speed run just this test with:
+    # %timeit !py.test tests/test_upload.py::test_wrapper_speed
+
+    # most of the current bottleneck appears to be in the gzip.write step
+    long_seq = b'ACGT' * 20
+    record = b'>header_%s\n' + long_seq + '\n'
+    data = b'\n'.join(record % i for i in range(200))
+    wrapper = FASTXTranslator(BytesIO(data))
+    assert len(wrapper.read()) < len(data)
