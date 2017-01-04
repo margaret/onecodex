@@ -193,6 +193,26 @@ def test_empty_upload(runner, upload_mocks):
         assert result.exit_code != 0
 
 
+def test_paired_files(runner, upload_mocks):
+    import mock
+
+    with runner.isolated_filesystem():
+        f, f2 = 'temp_R1.fa', 'temp_R2.fa'
+        with open(f, mode='w') as f_out, open(f2, mode='w') as f_out2:
+            f_out.write('>Test fasta\n')
+            f_out.write(SEQUENCE)
+            f_out2.write('>Test fasta\n')
+            f_out2.write(SEQUENCE)
+
+        args = ['--api-key', '01234567890123456789012345678901', 'upload', f, f2]
+        # check that only one upload is kicked off for the pair of files
+        with mock.patch('onecodex.lib.upload.upload_file') as mp:
+            result = runner.invoke(Cli, args)
+            assert mp.call_count == 1
+        assert 'It appears there are paired files' in result.output
+        assert result.exit_code == 0
+
+
 def test_large_uploads(runner, upload_mocks, monkeypatch):
     # a lot of funky mocking
     import mock
