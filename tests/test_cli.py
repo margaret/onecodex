@@ -100,7 +100,7 @@ def make_creds_file():
 
 def test_api_login(runner, mocked_creds_file):
     login_input = 'user@example.com' + '\n' + 'userpassword' + '\n'
-    successful_login_msg = 'Your ~/.onecodex credentials file successfully created.'
+    successful_login_msg = 'Your ~/.onecodex credentials file was successfully created.'
     with Replace('onecodex.auth.fetch_api_key_from_uname', mock_fetch_api_key):
         result = runner.invoke(Cli, ['login'], input=login_input)
         assert result.exit_code == 0

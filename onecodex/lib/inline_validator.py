@@ -212,10 +212,7 @@ class FASTXNuclIterator():
                 # automatically remove newlines from the end of the file (they get added back in
                 # by the formatting operation below, but otherwise they mess up the regex and you
                 # end up with two terminating \n's)
-                old_len = len(self.unchecked_buffer)
                 self.unchecked_buffer = self.unchecked_buffer.rstrip(b'\n')
-                newlines_stripped = old_len - len(self.unchecked_buffer)
-                self.processed_size += newlines_stripped
             else:
                 self.unchecked_buffer += new_data
 
@@ -234,7 +231,11 @@ class FASTXNuclIterator():
                     yield b'@{}\n{}\n+{}\n{}\n'.format(seq_id, seq, seq_id2, qual)
                 end = match.end()
 
-            self.processed_size += end
+            if hasattr(self.file_obj, 'fileobj'):
+                # for gzip files, get the amount read of the gzipped file (which is wrapped inside)
+                self.processed_size = self.file_obj.fileobj.tell()
+            else:
+                self.processed_size = self.file_obj.tell()
             self.unchecked_buffer = self.unchecked_buffer[end:]
 
     @property
@@ -253,8 +254,7 @@ class FASTXNuclIterator():
 
 
 class FASTXTranslator():
-    def __init__(self, file_obj, pair=None, recompress=True,
-                 progress_callback=None, **kwargs):
+    def __init__(self, file_obj, pair=None, recompress=True, progress_callback=None, **kwargs):
         # detect if gzipped/bzipped and uncompress transparently
         self.reads = FASTXNuclIterator(file_obj, **kwargs)
         self.reads_iter = iter(self.reads)
@@ -262,7 +262,7 @@ class FASTXTranslator():
             self.reads_pair = FASTXNuclIterator(pair)
             self.reads_pair_iter = iter(self.reads_pair)
             if self.reads.file_type != self.reads_pair.file_type:
-                raise ValidationError('Paired files are different types (FASTA/FASTQ)')
+                raise ValidationError('Paired read files are different types (FASTA/FASTQ)')
         else:
             self.reads_pair = None
             self.reads_pair_iter = None
@@ -274,6 +274,10 @@ class FASTXTranslator():
 
         self.progress_callback = progress_callback
         self.total_written = 0
+
+        # save in case we need to reset later
+        self._saved_args = kwargs.copy()
+        self._saved_args.update({'recompress': recompress, 'progress_callback': progress_callback})
 
     def read(self, n=-1):
         if self.reads_pair is None:
@@ -311,7 +315,8 @@ class FASTXTranslator():
                     self.checked_buffer.close()
                     break
                 else:
-                    raise ValidationError('Paired read files are not the same length')
+                    raise ValidationError("Paired read files do not have the "
+                                          "same number of records")
 
                 if self.progress_callback is not None:
                     bytes_uploaded = self.reads.processed_size + self.reads_pair.processed_size
@@ -328,7 +333,20 @@ class FASTXTranslator():
         bytes_left = self.reads.bytes_left
         if self.reads_pair is not None:
             bytes_left += self.reads_pair.bytes_left
-        return bytes_left
+        # this estimate is some number of bytes off from the true, final upload size
+        # (especially if the file is already gzipped) so we multiply by a fudge factor
+        return 2 * bytes_left
+
+    def seek(self, loc):
+        assert loc == 0  # we can only rewind all the way
+        reads = self.reads.file_obj
+        reads.seek(0)
+        if self.reads_pair:
+            pair = self.reads_pair.file_obj
+            pair.seek(0)
+        else:
+            pair = None
+        self.__init__(reads, pair, **self._saved_args)
 
     def write(self, b):
         raise NotImplementedError()

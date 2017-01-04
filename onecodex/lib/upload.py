@@ -232,13 +232,15 @@ def upload_file(file_obj, filename, session, samples_resource, log_to=None):
     while n_retries < max_retries:
         try:
             upload_request = session.post(upload_url, data=encoder,
-                                          headers={"Content-Type": encoder.content_type}, auth={})
+                                          headers={'Content-Type': encoder.content_type}, auth={})
             if upload_request.status_code != 201:
-                print("Upload failed. Please contact help@onecodex.com for assistance.")
-                raise SystemExit
+                raise UploadException("Upload failed. Please contact "
+                                      "help@onecodex.com for assistance.")
             break
         except requests.exceptions.ConnectionError:
             n_retries += 1
+            # reset the file_obj back to the start; we may need to rebuild the encoder too?
+            file_obj.seek(0)
             if n_retries == max_retries:
                 raise UploadException(
                     "The command line client is experiencing connectivity issues and "
