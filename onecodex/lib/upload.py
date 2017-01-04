@@ -218,7 +218,7 @@ def upload_file(file_obj, filename, session, samples_resource, log_to=None):
         )
     upload_url = upload_info['upload_url']
 
-    # Need a OrderedDict to preserve order for S3
+    # Need a OrderedDict to preserve order for S3 (although this doesn't actually matter?)
     multipart_fields = OrderedDict()
     for k, v in upload_info['additional_fields'].items():
         multipart_fields[str(k)] = str(v)
@@ -231,7 +231,8 @@ def upload_file(file_obj, filename, session, samples_resource, log_to=None):
     n_retries = 0
     while n_retries < max_retries:
         try:
-            upload_request = session.post(upload_url, data=encoder, auth={})
+            upload_request = session.post(upload_url, data=encoder,
+                                          headers={"Content-Type": encoder.content_type}, auth={})
             if upload_request.status_code != 201:
                 print("Upload failed. Please contact help@onecodex.com for assistance.")
                 raise SystemExit

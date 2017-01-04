@@ -79,7 +79,7 @@ def onecodex(ctx, api_key, no_pprint, verbose):
                 ctx.obj['API'] = Api(base_url=base_url, extensions=False,
                                      cache_schema=True, api_key=api_key)
             else:
-                click.echo("No One Codex API key available - running anonymously", err=True)
+                click.echo("No One Codex API key is available - running anonymously", err=True)
                 ctx.obj['API'] = Api(base_url=base_url, extensions=False, cache_schema=True)
 
     # handle checking insecure platform, we let upload command do it by itself
@@ -162,13 +162,15 @@ def samples(ctx, samples):
 @click.option('--clean', is_flag=True, help=OPTION_HELP['clean'], default=False)
 @click.option('--do-not-interleave', 'no_interleave', is_flag=True, help=OPTION_HELP['interleave'],
               default=False)
-@click.option('--prompt/--no-prompt', is_flag=True, help=OPTION_HELP['prompt'], default=False)
+@click.option('--prompt/--no-prompt', is_flag=True, help=OPTION_HELP['prompt'], default=True)
 @click.pass_context
 def upload(ctx, files, max_threads, clean, no_interleave, prompt):
     """Upload a FASTA or FASTQ (optionally gzip'd) to One Codex"""
     if len(files) == 0:
         print(ctx.get_help())
         return
+    else:
+        files = list(files)
 
     if not no_interleave:
         # "intelligently" find paired files and tuple them
@@ -194,10 +196,7 @@ def upload(ctx, files, max_threads, clean, no_interleave, prompt):
         if prompt and len(paired_files) > 0:
             pair_list = ''
             for p in paired_files:
-                merged_filename = re.sub('[._][Rr]1[._]',
-                                         lambda x: x.group().replace('1', '1/2'),
-                                         os.path.basename(p))
-                pair_list += '\n    ' + merged_filename
+                pair_list += '\n  {}  &  {}'.format(os.path.basename(p[0]), os.path.basename(p[1]))
 
             answer = click.confirm(
                 'It appears there are paired files:{}\nInterleave them after upload?'.format(
