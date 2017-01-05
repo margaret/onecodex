@@ -53,12 +53,16 @@ class GzipBuffer(object):
         self._buf = Buffer()
         self._gzip = gzip.GzipFile(None, mode='wb', fileobj=self._buf,
                                    compresslevel=GZIP_COMPRESSION_LEVEL)
+        self._reads_buffer = Buffer()
+        self.MAX_READS_BUFFER_SIZE = 1024 * 256  # 256kb
 
     def __len__(self):
         return len(self._buf)
 
     def write(self, s):
-        self._gzip.write(s)
+        self._reads_buffer.write(s)
+        if len(self._reads_buffer) >= self.MAX_READS_BUFFER_SIZE:
+            self._gzip.write(self._reads_buffer.read())
 
     def read(self, size=-1):
         return self._buf.read(size)
@@ -67,6 +71,8 @@ class GzipBuffer(object):
         pass
 
     def close(self):
+        if len(self._reads_buffer) > 0:
+            self._gzip.write(self._reads_buffer.read())
         self._gzip.close()
 
 

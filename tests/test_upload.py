@@ -1,5 +1,7 @@
 from collections import OrderedDict
+import gzip
 from io import BytesIO
+import random
 from requests_toolbelt import MultipartEncoder
 
 from mock import patch
@@ -43,6 +45,31 @@ def test_paired_validator():
     # there's a 4-byte timestamp in the middle of the gziped data so we check the start and end
     assert outdata.startswith(b'\x1f\x8b\x08\x00')
     assert outdata.endswith(b'\x02\xff\xb3+I-.\xe1rtv\x0f\xe1\x02\x00\xf3\x1dK\xc4\x0b\x00\x00\x00')
+
+
+def test_gzip_correctness_large_file(runner):
+    """Test that a large random file is properly written out and read back in
+    """
+    content = '>test_{}\n'
+    file_content = ''
+    with runner.isolated_filesystem():
+        N_READS = 5000
+        with open('myfasta.fa', mode='w') as f:
+            for ix in xrange(N_READS):
+                read = content.format(ix)
+                read += ''.join(random.choice('ACGT') for _ in range(100)) + '\n'
+                f.write(read)
+                file_content += read
+        outfile = FASTXTranslator(open('myfasta.fa'), recompress=True)
+        with open('myfasta.fa.gz', mode='w') as f:
+            f.write(outfile.read())
+
+        # Ensure we're actually testing the buffer flushing
+        assert len(file_content) > 2 * outfile.checked_buffer.MAX_READS_BUFFER_SIZE
+
+        # Check that content matches
+        translated_content = gzip.open('myfasta.fa.gz').read()
+        assert translated_content == file_content
 
 
 @pytest.mark.parametrize('n_newlines', [0, 1, 2, 3])
