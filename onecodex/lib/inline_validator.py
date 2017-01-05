@@ -85,11 +85,14 @@ class FASTXNuclIterator():
         self._set_file_obj(file_obj, check_filename=check_filename)
         self.unchecked_buffer = b''
         self.seq_reader = self._generate_seq_reader(False)
+        self.allow_iupac = allow_iupac
 
-        if allow_iupac:
+        if self.allow_iupac:
             self.valid_bases = re.compile(b'[^ABCDGHIKMNRSTUVWXYabcdghikmnrstuvwxy\s]')
+            self.valid_bases_match = re.compile(b'^[ABCDGHIKMNRSTUVWXYabcdghikmnrstuvwxy\s]*$')
         else:
-            self.valid_bases = re.compile(b'[^ACGTNUXacgtnux\s]')
+            self.valid_bases = re.compile(b'[^ACGTNacgtn\s]')
+            self.valid_bases_match = re.compile(b'^[ACGTNacgtn\s]*$')
         self.as_raw = as_raw
 
         if hasattr(file_obj, 'name'):
@@ -196,13 +199,17 @@ class FASTXNuclIterator():
             self._warn_once('{} can not have tabs in headers; autoreplacing'.format(self.name))
             seq_id = seq_id.replace('\t', '|')
 
-        if self.valid_bases.search(seq) is not None:
+        # Match then search is ~5-10% faster than just searching
+        if not bool(self.valid_bases_match.match(seq)):
             chars = ','.join(set(self.valid_bases.findall(seq)))
             raise ValidationError('{} contains non-nucleic acid characters: {}'.format(self.name,
                                                                                        chars))
-        if OTHER_BASES.search(seq) is not None:
+
+        # Only search for OTHER_BASES if we're allowing them above in the first place
+        if self.allow_iupac and OTHER_BASES.search(seq) is not None:
             self._warn_once('Translating other bases in {} (X->N,U->T)'.format(self.name))
             seq = seq.translate(OTHER_BASE_TRANS)
+
         return seq_id, seq, seq_id2, qual
 
     def __iter__(self):
