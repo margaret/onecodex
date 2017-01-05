@@ -62,17 +62,17 @@ class GzipBuffer(object):
     def write(self, s):
         self._reads_buffer.write(s)
         if len(self._reads_buffer) >= self.MAX_READS_BUFFER_SIZE:
-            self._gzip.write(self._reads_buffer.read())
+            self.flush()
 
     def read(self, size=-1):
         return self._buf.read(size)
 
     def flush(self):
-        pass
+        self._gzip.write(self._reads_buffer.read())
 
     def close(self):
         if len(self._reads_buffer) > 0:
-            self._gzip.write(self._reads_buffer.read())
+            self.flush()
         self._gzip.close()
 
 

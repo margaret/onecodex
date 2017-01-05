@@ -36,18 +36,13 @@ def _file_stats(filename):
     if ext in {'.gz', '.gzip', '.bz', '.bz2', '.bzip'}:
         new_filename, ext = os.path.splitext(new_filename)
 
-    if ext in {'.fa', '.fna', '.fasta'}:
-        ext = '.fa'
-    elif ext in {'.fq', '.fastq'}:
-        ext = '.fq'
-
     return new_filename + ext + '.gz', file_size
 
 
 def _wrap_files(filename, logger=None):
     """
-    A little helper to wrap a sequencing file (or join and wrap R1/R2 pairs) and return
-    a merged file_object and a "new" filename for the output
+    A little helper to wrap a sequencing file (or join and wrap R1/R2 pairs)
+    and return a merged file_object
     """
     if isinstance(filename, tuple):
         file_obj = FASTXTranslator(open(filename[0], 'rb'), pair=open(filename[1], 'rb'),
