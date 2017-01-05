@@ -28,7 +28,7 @@ def _file_stats(filename):
         file_size = sum(os.path.getsize(f) for f in filename)
         # strip out the _R1_/etc chunk from the first filename if this is a paired upload
         # and make that the filename
-        filename = re.sub('[._][Rr][12][._]', '', filename[0])
+        filename = re.sub('[._][Rr][12][._]', '_', filename[0])
     else:
         file_size = os.path.getsize(filename)
 
@@ -91,7 +91,10 @@ def upload(files, session, samples_resource, server_url, threads=DEFAULT_UPLOAD_
 
         block = int(round(bar_length * progress))
         bar = '#' * block + '-' * (bar_length - block)
-        log_to.write('\rUploading: [{}] {:.0f}%'.format(bar, progress * 100))
+        if progress != 1:
+            log_to.write('\rUploading: [{}] {:.0f}%'.format(bar, progress * 100))
+        else:
+            log_to.write('\rUploading: Validating & finalizing...')
         log_to.flush()
 
     progress_bar = None if log_to is None else progress_bar_display
@@ -153,7 +156,7 @@ def upload(files, session, samples_resource, server_url, threads=DEFAULT_UPLOAD_
             file_obj.close()
 
     if log_to is not None:
-        log_to.write('\rUploading: All complete.' + (bar_length - 3) * ' ')
+        log_to.write('\rUploading: All complete.' + (bar_length - 3) * ' ' + '\n')
         log_to.flush()
 
 
@@ -225,6 +228,12 @@ def upload_file(file_obj, filename, session, samples_resource, log_to=None):
 
     multipart_fields['file'] = (filename, file_obj, 'application/x-gzip')
     encoder = MultipartEncoder(multipart_fields)
+    content_type = encoder.content_type
+
+    # Don't actually bother with streaming if <= 16MB
+    if isinstance(file_obj, FASTXTranslator) and len(file_obj) <= 1024 * 1024 * 16:
+        encoder = encoder.to_string()
+        # pass
 
     # try to upload the file, retrying as necessary
     max_retries = 3
@@ -232,10 +241,11 @@ def upload_file(file_obj, filename, session, samples_resource, log_to=None):
     while n_retries < max_retries:
         try:
             upload_request = session.post(upload_url, data=encoder,
-                                          headers={'Content-Type': encoder.content_type}, auth={})
+                                          headers={'Content-Type': content_type}, auth={})
             if upload_request.status_code != 201:
                 raise UploadException("Upload failed. Please contact "
                                       "help@onecodex.com for assistance.")
+            file_obj.close()
             break
         except requests.exceptions.ConnectionError:
             n_retries += 1

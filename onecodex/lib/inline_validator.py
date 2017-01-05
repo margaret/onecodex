@@ -84,7 +84,6 @@ class FASTXNuclIterator():
     def __init__(self, file_obj, allow_iupac=False, check_filename=True, as_raw=False):
         self._set_file_obj(file_obj, check_filename=check_filename)
         self.unchecked_buffer = b''
-        self.buffer_read_size = 1024 * 1024 * 16  # 16MB
         self.seq_reader = self._generate_seq_reader(False)
 
         if allow_iupac:
@@ -157,6 +156,12 @@ class FASTXNuclIterator():
                     ))
             except IOError:
                 pass
+
+        # Set the buffer size, 16MB by default for files >32MB
+        if self.total_size >= (1024 * 1024 * 32):
+            self.buffer_read_size = 1024 * 1024 * 16  # 16MB
+        else:
+            self.buffer_read_size = 1024 * 16  # 16KB small chunk
 
     def _generate_seq_reader(self, last=False):
         # the last record doesn't have a @/> on the next line so we omit that
@@ -253,7 +258,7 @@ class FASTXNuclIterator():
         self.file_obj.close()
 
 
-class FASTXTranslator():
+class FASTXTranslator(object):
     def __init__(self, file_obj, pair=None, recompress=True, progress_callback=None, **kwargs):
         # detect if gzipped/bzipped and uncompress transparently
         self.reads = FASTXNuclIterator(file_obj, **kwargs)
@@ -329,13 +334,15 @@ class FASTXTranslator():
 
     @property
     def len(self):
-        # to fool requests_toolbelt into uploading properly
+        # Properly ensure requests_toolbelt reads the entirety of the
+        # file *plus* the remaining buffer object
         bytes_left = self.reads.bytes_left
         if self.reads_pair is not None:
             bytes_left += self.reads_pair.bytes_left
-        # this estimate is some number of bytes off from the true, final upload size
-        # (especially if the file is already gzipped) so we multiply by a fudge factor
-        return 2 * bytes_left
+        return bytes_left + len(self.checked_buffer)
+
+    def __len__(self):
+        return self.len
 
     def seek(self, loc):
         assert loc == 0  # we can only rewind all the way
@@ -352,6 +359,7 @@ class FASTXTranslator():
         raise NotImplementedError()
 
     def close(self):
+        assert len(self.checked_buffer) == 0
         self.reads.close()
         if self.reads_pair is not None:
             self.reads_pair.close()

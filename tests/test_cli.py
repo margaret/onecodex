@@ -206,9 +206,12 @@ def test_paired_files(runner, upload_mocks):
 
         args = ['--api-key', '01234567890123456789012345678901', 'upload', f, f2]
         # check that only one upload is kicked off for the pair of files
-        with mock.patch('onecodex.lib.upload.upload_file') as mp:
+        patch1 = 'onecodex.lib.upload.upload_file'
+        patch2 = 'onecodex.lib.inline_validator.FASTXTranslator.close'
+        with mock.patch(patch1) as mp, mock.patch(patch2) as mp2:
             result = runner.invoke(Cli, args)
             assert mp.call_count == 1
+            assert mp2.call_count == 1
         assert 'It appears there are paired files' in result.output
         assert result.exit_code == 0
 

@@ -1,4 +1,6 @@
+from collections import OrderedDict
 from io import BytesIO
+from requests_toolbelt import MultipartEncoder
 
 from mock import patch
 import pytest
@@ -155,3 +157,19 @@ def test_wrapper_speed():
     data = b'\n'.join(record % i for i in range(200))
     wrapper = FASTXTranslator(BytesIO(data))
     assert len(wrapper.read()) < len(data)
+
+
+def test_multipart_encoder():
+    long_seq = b'ACGT' * 50
+    record = b'>header_%s\n' + long_seq + '\n'
+    data = b'\n'.join(record % i for i in range(200))
+    wrapper = FASTXTranslator(BytesIO(data), recompress=False)
+    wrapper_len = len(wrapper.read())
+    wrapper.seek(0)
+
+    multipart_fields = OrderedDict()
+    multipart_fields['file'] = ('fakefile', wrapper, 'application/x-gzip')
+    encoder = MultipartEncoder(multipart_fields)
+    MAGIC_HEADER_LEN = 178
+    wrapper.seek(0)
+    assert len(encoder.read()) - MAGIC_HEADER_LEN == wrapper_len

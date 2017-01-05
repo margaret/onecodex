@@ -34,8 +34,7 @@ OPTION_HELP = {
               "headers and converts U to T. If this isn't passed, these will cause errors."),
     'interleave': ("Do not automatically interleave paired end files. Note this normally happens "
                    "during the upload, does not require additional disk space, and does not change "
-                   "the files themselves. R2 files will be automatically detected from R1 files "
-                   "and do not need to be explicitly listed unless --no-prompt is set."),
+                   "the files themselves."),
     'prompt': ("Manually prompt about automatic paired file interleaving. Setting --no-prompt "
                "will allow running without any user intervention, e.g. in a script."),
 }

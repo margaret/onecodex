@@ -182,9 +182,10 @@ def api_data():
 def upload_mocks():
     def upload_callback(request):
         # Get and read the streaming iterator so it's empty
-        streaming_iterator = request.body.fields['file'][1]
-        streaming_iterator.read()
-        assert isinstance(streaming_iterator, FASTXTranslator)
+        if hasattr(request.body, 'fields'):
+            streaming_iterator = request.body.fields['file'][1]
+            streaming_iterator.read()
+            assert isinstance(streaming_iterator, FASTXTranslator)
         return (201, {'location': 'on-aws'}, '')
 
     json_data = {
