@@ -9,6 +9,7 @@ import os
 import re
 import sys
 import warnings
+import requests
 
 import click
 
@@ -141,6 +142,20 @@ def panels(ctx, panels):
 def samples(ctx, samples):
     """Retrieve uploaded samples"""
     cli_resource_fetcher(ctx, "samples", samples)
+
+
+@onecodex.command('import_srr')
+@click.pass_context
+@click.argument('accessions', nargs=-1, required=False)
+def import_srr(ctx, accessions):
+    """Import one or more SRA accessions (SRR*)"""
+    for acc in accessions:
+        assert acc.startswith(('SRR', 'ERR', 'DRR')), "Must start with SRR/ERR/DRR"
+        r = requests.post("https://app.onecodex.com/api/v1/samples/import",
+                          json={'import_type': 'sra', 'uri': acc},
+                          auth=(ctx.obj['API_KEY'], ''))
+        assert r.status_code == 200, "Status code for POST was not 200"
+        print("Imported {} as sample {}".format(acc, r.json()['sample_id']))
 
 
 # utilites
