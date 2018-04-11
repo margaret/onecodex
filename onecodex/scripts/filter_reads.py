@@ -5,7 +5,8 @@ import os
 
 from onecodex.exceptions import OneCodexException, ValidationError
 from onecodex.lib.inline_validator import FASTXTranslator
-from onecodex.utils import download_file_helper, get_download_dest, pretty_errors
+from onecodex.utils import (download_file_helper, get_download_dest, HOSTS,
+                           pretty_errors)
 
 
 def with_progress_bar(length, ix, *args, **kwargs):
@@ -19,11 +20,19 @@ def with_progress_bar(length, ix, *args, **kwargs):
         return ix(cb=bar.update, *args, **kwargs)
 
 
-def filter_rows_by_taxid(results, tax_ids, cb=None):
+def filter_rows_by_taxid(results, tax_ids, respect_filter=False,
+                         inclusive=True, cb=None):
     filtered_rows = []
     for i, row in enumerate(results):
-        if row['Tax ID'] in tax_ids:
-            filtered_rows.append(i)
+        keep = True
+        if respect_filter and row['Passed Filter'] == 'F':
+            keep = False
+        if inclusive:
+            if row['Tax ID'] in tax_ids and keep:
+                filtered_rows.append(i)
+        else:
+            if row['Tax ID'] not in tax_ids and keep:
+                filtered_rows.append(i)
         if i % 1000 == 0 and cb:
             cb(1000)
     return filtered_rows
@@ -56,18 +65,31 @@ def write_fastx_record(record, handler):
 @click.command(help='Filter a FASTX file based on the taxonomic results from a CLASSIFICATION_ID')
 @click.argument('classification_id')
 @click.argument('fastx', type=click.Path())
-@click.option('-t', '--tax-id', required=True, multiple=True,
-              help='Filter to reads mapping to tax IDs. May be passed multiple times.')
+@click.option('-t', '--tax-id', multiple=True, type=int, help='Tax ID\'s on '
+              'which to filter reads. May be passed multiple times.')
+@click.option('--respect-filter', is_flag=True, help='Whether to respect the '
+              '"Passed Filter" flag set by the classifier. Default is false.')
+@click.option('--inclusive/--exclusive', default=True, help='Whether to keep '
+              'reads that do (inclusive) or don\'t (exclusive) match the tax '
+              'ID\'s. Default is --inclusive.')
+@click.option('--exclude-hosts', is_flag=True, help='Whether to exclude host '
+              'reads from filtered FASTX. Default is false (include host reads).')
 @click.option('-r', '--reverse', type=click.Path(), help='The reverse (R2) '
               'read file, optionally')
-@click.option('--split-pairs/--keep-pairs', default=False, help='Keep only '
-              'the read pair member that matches the list of tax ID\'s')
+@click.option('--split-pairs/--keep-pairs', default=False, help='Whether to '
+              ' keep only the read pair member that matches the list of tax '
+              'ID\'s. Defaults to true (split discordant pairs).')
 @click.option('-o', '--out', default='.', type=click.Path(), help='Where '
               'to put the filtered outputs')
 @click.pass_context
 @pretty_errors
-def cli(ctx, classification_id, fastx, reverse, tax_id, split_pairs, out):
+def cli(ctx, classification_id, fastx, reverse, tax_id, respect_filter, 
+        inclusive, exclude_hosts, split_pairs, out):
     tax_ids = tax_id  # rename
+
+    if (exclude_hosts and not inclusive) or (not exclude_hosts and inclusive):
+        tax_ids += HOSTS
+
     if not len(tax_ids):
         raise OneCodexException('You must supply at least one tax ID')
 
@@ -102,7 +124,9 @@ def cli(ctx, classification_id, fastx, reverse, tax_id, split_pairs, out):
                 tsv_row_count,
                 filter_rows_by_taxid,
                 reader,
-                tax_ids
+                tax_ids,
+                inclusive,
+                respect_filter
             )
 
     filtered_filename = get_filtered_filename(fastx)[0]

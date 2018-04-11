@@ -62,6 +62,8 @@ SUPPORTED_EXTENSIONS = ["fa", "fasta", "fq", "fastq",
                         "fa.gz", "fasta.gz", "fq.gz", "fastq.gz",
                         "fa.gzip", "fasta.gzip", "fq.gzip", "fastq.gzip"]
 
+HOSTS = ['9606', '3483', '10090', '278022', '4577', '7227', '7460', '4097',
+         '3218', '4530', '7995', '4565', '3702', '9913', '3483', '6239']
 
 def valid_api_key(ctx, param, value):
     """
