@@ -7,10 +7,13 @@ import pytest
 from onecodex import Cli
 
 
-@pytest.mark.parametrize('paired,split_pairs', [
-    (False, False),
-    (True, True),
-    (True, False),
+@pytest.mark.parametrize('respect_filter,inclusive,exclude_hosts,paired,split_pairs', [
+    (True, True, False, False, False), # respect filter, inclusive
+    (False, True, False, False, False), # ignore filter, inclusive
+    (False, False, False, False, False), # ignore filter, exclusive
+    (False, True, True, False, False), # ignore filter, inclusive, exclude hosts
+    (False, True, False, True, True), # paired, split pairs
+    (False, True, False, True, False) # paired, keep pairs
 ])
 def test_filter_reads(runner, api_data, mocked_creds_file, paired, split_pairs):
     basedir = os.path.abspath(os.path.dirname(__file__))
@@ -63,6 +66,19 @@ def test_filter_reads(runner, api_data, mocked_creds_file, paired, split_pairs):
             ]
             outfiles = ['test_single_filtering_001.filtered.fastq']
             digests = ['c8a2de041bc3025476d0cf2c566d926f']
+
+            if respect_filter:
+                args += ['--respect_filter']
+                digests = [] # TODO generate digest
+
+            elif not inclusive:
+                args += ['--exclusive']
+                digests = [] # TODO generate digest
+
+            elif exclude_hosts:
+                args += ['--exclude-hosts']
+                digests = [] # TODO generate digest
+
         result = runner.invoke(Cli, args)
 
         assert 'Using cached read-level results' in result.output
