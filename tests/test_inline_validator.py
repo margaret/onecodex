@@ -129,7 +129,7 @@ def test_translator_to_reader(runner):
 
 @pytest.mark.parametrize('file_id,filename,validates,allow_iupac,modified,raises', [
     ('VALID_FASTQ', 'my.fq', True, False, False, False),
-    ('INVALID_FASTQ', 'my.fq', False, False, False, False), # Bad Nucleotides
+    ('INVALID_FASTQ', 'my.fq', False, False, False, False),  # Bad Nucleotides
     ('MODIFIABLE_FASTQ', 'my.fq', True, True, True, False),
     ('TABBED_FASTQ', 'my.fq', True, False, True, False),
     ('VALID_FASTQ', 'my.fastz', False, False, False, True),  # Bad name
@@ -152,7 +152,6 @@ def test_fastq_validation(runner, filename, file_id, validates, allow_iupac, mod
                 with pytest.raises(ValidationError):
                     translator = FASTXReader(open(filename, mode='rb'))
                     translator.read()
-
 
 
 def test_gzip_correctness_large_file(runner):

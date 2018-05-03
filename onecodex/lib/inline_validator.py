@@ -484,7 +484,7 @@ class FASTXTranslator(BaseFASTXReader):
 
 class FASTXReader(BaseFASTXReader):
     def __init__(self, *args, **kwargs):
-        """Class that does not validate the input FASTX file, just provides a progress bar wrapper.
+        """Class that validates that the file format and the file type match, but does not validate the contents. It justs provides a progress bar wrapper.
         """
         super(FASTXReader, self).__init__(*args, **kwargs)
         file_obj = self.reads
@@ -539,12 +539,12 @@ class FASTXReader(BaseFASTXReader):
             raise ValidationError('{} is not gzipped but has a ".bz2" file extension.'.format(file_obj.name))
 
         elif start == b'>' and not ('.fa' in file_obj.name or
-                                       '.fna' in file_obj.name or
-                                       '.fasta' in file_obj.name):
+                                    '.fna' in file_obj.name or
+                                    '.fasta' in file_obj.name):
             raise ValidationError('{} is FASTA, but lacks a ".fa" ending'.format(file_obj.name))
         elif start == b'@':
             if not ('.fq' in file_obj.name or
-                                       '.fastq' in file_obj.name):
+                    '.fastq' in file_obj.name):
                 raise ValidationError('{} is FASTQ, but lacks a ".fq" ending'.format(file_obj.name))
         else:
             raise ValidationError('{} is not valid FASTX'.format(file_obj.name))
