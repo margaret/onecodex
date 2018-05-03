@@ -1,0 +1,4 @@
+{
+  "tests/test_inline_validator.py::test_fastq_validation[INVALID_FASTQ-my.fq-False-False-False]": true, 
+  "tests/test_inline_validator.py::test_fastq_validation[INVALID_FASTQ-my.fq-False-True-False]": true
+}

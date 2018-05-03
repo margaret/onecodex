@@ -1,0 +1,22 @@
+[
+  "tests/test_inline_validator.py::test_nucl_iterator", 
+  "tests/test_inline_validator.py::test_paired_validator", 
+  "tests/test_inline_validator.py::test_file_size_requirement", 
+  "tests/test_inline_validator.py::test_gzip_filename_validation", 
+  "tests/test_inline_validator.py::test_mislabeled_gzip_filename", 
+  "tests/test_inline_validator.py::test_bzip_filename_validation", 
+  "tests/test_inline_validator.py::test_bzip_file", 
+  "tests/test_inline_validator.py::test_translator_to_reader", 
+  "tests/test_inline_validator.py::test_fastq_validation[VALID_FASTQ-my.fq-True-False-False-False]", 
+  "tests/test_inline_validator.py::test_fastq_validation[INVALID_FASTQ-my.fq-False-False-False-False]", 
+  "tests/test_inline_validator.py::test_fastq_validation[MODIFIABLE_FASTQ-my.fq-True-True-True-False]", 
+  "tests/test_inline_validator.py::test_fastq_validation[TABBED_FASTQ-my.fq-True-False-True-False]", 
+  "tests/test_inline_validator.py::test_fastq_validation[VALID_FASTQ-my.fastz-False-False-False-True]", 
+  "tests/test_inline_validator.py::test_fastq_validation[VALID_FASTQ-my.fq.gz-False-False-False-True]", 
+  "tests/test_inline_validator.py::test_gzip_correctness_large_file", 
+  "tests/test_inline_validator.py::test_validator_newlines[0]", 
+  "tests/test_inline_validator.py::test_validator_newlines[1]", 
+  "tests/test_inline_validator.py::test_validator_newlines[2]", 
+  "tests/test_inline_validator.py::test_validator_newlines[3]", 
+  "tests/test_inline_validator.py::test_wrapper_speed"
+]

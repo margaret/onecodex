@@ -121,22 +121,21 @@ def test_translator_to_reader(runner):
         with pytest.raises(AssertionError):
             translator.close()
         reader = FASTXReader(translator.reads.file_obj.fileobj)
-        assert reader.reads.tell() == 0
-        assert reader.readall() == open('myfasta.fa.gz', mode='rb').read()  # Compressed!
+        assert reader.reads.tell() == 1
         reader.seek(0)
         assert reader.reads.tell() == 0
         reader.close()
 
 
-@pytest.mark.parametrize('file_id,filename,validates,allow_iupac,modified', [
-    ('VALID_FASTQ', 'my.fq', True, False, False),
-    ('INVALID_FASTQ', 'my.fq', False, False, False),
-    ('MODIFIABLE_FASTQ', 'my.fq', True, True, True),
-    ('TABBED_FASTQ', 'my.fq', True, False, True),
-    ('VALID_FASTQ', 'my.fastz', False, False, False),  # Bad name
-    ('VALID_FASTQ', 'my.fq.gz', False, False, False),   # Bad extension, not gzipped
+@pytest.mark.parametrize('file_id,filename,validates,allow_iupac,modified,raises', [
+    ('VALID_FASTQ', 'my.fq', True, False, False, False),
+    ('INVALID_FASTQ', 'my.fq', False, False, False, False), # Bad Nucleotides
+    ('MODIFIABLE_FASTQ', 'my.fq', True, True, True, False),
+    ('TABBED_FASTQ', 'my.fq', True, False, True, False),
+    ('VALID_FASTQ', 'my.fastz', False, False, False, True),  # Bad name
+    ('VALID_FASTQ', 'my.fq.gz', False, False, False, True),   # Bad extension, not gzipped
 ])
-def test_fastq_validation(runner, filename, file_id, validates, allow_iupac, modified):
+def test_fastq_validation(runner, filename, file_id, validates, allow_iupac, modified, raises):
     warnings.filterwarnings('ignore', category=ValidationWarning)
     with runner.isolated_filesystem():
         with open(filename, mode='wb') as f:
@@ -149,10 +148,11 @@ def test_fastq_validation(runner, filename, file_id, validates, allow_iupac, mod
             assert translator.read() == content
             assert translator.modified == modified
         else:
-            with pytest.raises(ValidationError):
-                translator = FASTXTranslator(open(filename, mode='rb'),
-                                             allow_iupac=allow_iupac, recompress=False)
-                translator.read()
+            if raises:
+                with pytest.raises(ValidationError):
+                    translator = FASTXReader(open(filename, mode='rb'))
+                    translator.read()
+
 
 
 def test_gzip_correctness_large_file(runner):

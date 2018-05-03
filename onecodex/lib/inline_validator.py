@@ -487,6 +487,8 @@ class FASTXReader(BaseFASTXReader):
         """Class that does not validate the input FASTX file, just provides a progress bar wrapper.
         """
         super(FASTXReader, self).__init__(*args, **kwargs)
+        file_obj = self.reads
+        self.validate(file_obj)
 
     def _set_read(self, file_obj):
         self.reads = file_obj
@@ -516,3 +518,33 @@ class FASTXReader(BaseFASTXReader):
 
     def close(self):
         self.reads.close()
+
+    def validate(self, file_obj):
+        start = file_obj.read(1)
+        if start == b'\x1f':
+            if not file_obj.name.endswith(('.gz', '.gzip')):
+                raise ValidationError('{} is gzipped, but lacks a ".gz" ending'.format(file_obj.name))
+        elif file_obj.name.endswith(('.gz', '.gzip')):
+            raise ValidationError('{} is not gzipped but has a ".gz" file extension.'.format(file_obj.name))
+        elif start == b'\x42' and hasattr(bz2, 'open'):
+            if not file_obj.name.endswith(('.bz2', '.bz', '.bzip')):
+                raise ValidationError('{} is bzipped, but lacks a ".bz2" ending'.format(file_obj.name))
+            # we can only read BZ2 files in python 3.3 and above
+            file_obj.seek(0)
+            patched_name = file_obj.name
+            file_obj = bz2.open(file_obj)
+            file_obj.name = patched_name
+            start = file_obj.read(1)
+        elif file_obj.name.endswith(('.bz2', '.bz', '.bzip')):
+            raise ValidationError('{} is not gzipped but has a ".bz2" file extension.'.format(file_obj.name))
+
+        elif start == b'>' and not ('.fa' in file_obj.name or
+                                       '.fna' in file_obj.name or
+                                       '.fasta' in file_obj.name):
+            raise ValidationError('{} is FASTA, but lacks a ".fa" ending'.format(file_obj.name))
+        elif start == b'@':
+            if not ('.fq' in file_obj.name or
+                                       '.fastq' in file_obj.name):
+                raise ValidationError('{} is FASTQ, but lacks a ".fq" ending'.format(file_obj.name))
+        else:
+            raise ValidationError('{} is not valid FASTX'.format(file_obj.name))
