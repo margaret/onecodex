@@ -538,10 +538,11 @@ class FASTXReader(BaseFASTXReader):
         elif file_obj.name.endswith(('.bz2', '.bz', '.bzip')):
             raise ValidationError('{} is not gzipped but has a ".bz2" file extension.'.format(file_obj.name))
 
-        elif start == b'>' and not ('.fa' in file_obj.name or
-                                    '.fna' in file_obj.name or
-                                    '.fasta' in file_obj.name):
-            raise ValidationError('{} is FASTA, but lacks a ".fa" ending'.format(file_obj.name))
+        elif start == b'>':
+            if not ('.fa' in file_obj.name or
+                    '.fna' in file_obj.name or
+                    '.fasta' in file_obj.name):
+                raise ValidationError('{} is FASTA, but lacks a ".fa" ending'.format(file_obj.name))
         elif start == b'@':
             if not ('.fq' in file_obj.name or
                     '.fastq' in file_obj.name):

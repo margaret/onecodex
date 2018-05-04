@@ -32,11 +32,19 @@ def _file_stats(filename):
     else:
         file_size = os.path.getsize(filename)
 
+    # return filename, file_size
     new_filename, ext = os.path.splitext(os.path.basename(filename))
+    is_gz = False
     if ext in {'.gz', '.gzip', '.bz', '.bz2', '.bzip'}:
+        is_gz = True
         new_filename, ext = os.path.splitext(new_filename)
 
-    return new_filename + ext + '.gz', file_size
+    final_filename = new_filename + ext
+
+    if is_gz:
+        final_filename = final_filename + '.gz'
+
+    return final_filename, file_size
 
 
 def _wrap_files(filename, logger=None, validate=True):
@@ -218,6 +226,7 @@ def upload_file(file_obj, filename, session, samples_resource, log_to=None):
     """
     Uploads a file to the One Codex server directly to the users S3 bucket by self-signing
     """
+
     try:
         upload_info = samples_resource.init_upload({
             'filename': filename,
